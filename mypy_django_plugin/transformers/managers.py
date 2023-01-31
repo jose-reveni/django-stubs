@@ -71,7 +71,8 @@ def get_method_type_from_dynamic_manager(
     queryset_fullname = manager_type_info.metadata["django"]["from_queryset_manager"]
     assert isinstance(queryset_fullname, str)
     queryset_info = helpers.lookup_fully_qualified_typeinfo(api, queryset_fullname)
-    #assert queryset_info is not None
+    if queryset_info is None:
+        return None
 
     def get_funcdef_type(definition: Union[FuncBase, Decorator, None]) -> Optional[ProperType]:
         # TODO: Handle @overload?
