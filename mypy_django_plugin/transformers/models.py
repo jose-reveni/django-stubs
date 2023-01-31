@@ -346,11 +346,11 @@ class AddManagers(ModelClassInitializer):
                 # Find expression for e.g. `objects = SomeManager()`
                 manager_expr = self.get_manager_expression(manager_name)
                 manager_fullname = f"{self.model_classdef.fullname}.{manager_name}"
-                self.api.fail(
-                    f'Could not resolve manager type for "{manager_fullname}"',
-                    manager_expr if manager_expr else self.ctx.cls,
-                    code=MANAGER_MISSING,
-                )
+                # self.api.fail(
+                #     f'Could not resolve manager type for "{manager_fullname}"',
+                #     manager_expr if manager_expr else self.ctx.cls,
+                #     code=MANAGER_MISSING,
+                # )
 
     def get_manager_expression(self, name: str) -> Optional[AssignmentStmt]:
         # TODO: What happens if the manager is defined multiple times?
@@ -490,15 +490,15 @@ class AddRelatedManagers(ModelClassInitializer):
                         attname, Instance(fallback_manager, [Instance(related_model_info, [])])
                     )
                     related_model_fullname = related_model_cls.__module__ + "." + related_model_cls.__name__
-                    self.ctx.api.fail(
-                        (
-                            "Couldn't resolve related manager for relation "
-                            f"{relation.name!r} (from {related_model_fullname}."
-                            f"{relation.field})."
-                        ),
-                        self.ctx.cls,
-                        code=MANAGER_MISSING,
-                    )
+                    # self.ctx.api.fail(
+                    #     (
+                    #         "Couldn't resolve related manager for relation "
+                    #         f"{relation.name!r} (from {related_model_fullname}."
+                    #         f"{relation.field})."
+                    #     ),
+                    #     self.ctx.cls,
+                    #     code=MANAGER_MISSING,
+                    # )
 
                     continue
 
