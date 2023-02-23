@@ -31,12 +31,12 @@ dependencies = [
 ]
 
 extras_require = {
-    "compatible-mypy": ["mypy>=0.991,<1.0"],
+    "compatible-mypy": ["mypy>=1.0,<1.1"],
 }
 
 setup(
     name="django-stubs",
-    version="1.14.0",
+    version="1.15.0",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
