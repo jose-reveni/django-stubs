@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 from typing import List
 
@@ -22,8 +23,8 @@ with open("README.md") as f:
 dependencies = [
     "mypy>=0.980",
     "django",
-    "django-stubs-ext>=0.8.0",
-    "tomli",
+    "django-stubs-ext>=4.2.0",
+    "tomli; python_version < '3.11'",
     # Types:
     "typing-extensions",
     "types-pytz",
@@ -31,23 +32,24 @@ dependencies = [
 ]
 
 extras_require = {
-    "compatible-mypy": ["mypy>=1.1.1,<1.2"],
+    "compatible-mypy": ["mypy>=1.2.0,<1.3"],
 }
 
 setup(
     name="django-stubs",
-    version="1.16.0",
+    version="4.2.0",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
     license="MIT",
+    license_files=["LICENSE.md"],
     url="https://github.com/typeddjango/django-stubs",
     author="Maksim Kurnikov",
     author_email="maxim.kurnikov@gmail.com",
     maintainer="Marti Raudsepp",
     maintainer_email="marti@juffo.org",
     py_modules=[],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     install_requires=dependencies,
     extras_require=extras_require,
     packages=["django-stubs", *find_packages(exclude=["scripts"])],
@@ -58,7 +60,6 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
@@ -69,8 +70,8 @@ setup(
         "Framework :: Django :: 3.0",
         "Framework :: Django :: 3.1",
         "Framework :: Django :: 3.2",
-        "Framework :: Django :: 4.0",
         "Framework :: Django :: 4.1",
+        "Framework :: Django :: 4.2",
     ],
     project_urls={
         "Release notes": "https://github.com/typeddjango/django-stubs/releases",

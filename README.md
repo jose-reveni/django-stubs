@@ -49,25 +49,35 @@ This fully working [typed boilerplate](https://github.com/wemake-services/wemake
 
 We rely on different `django` and `mypy` versions:
 
-| django-stubs | mypy version | django version | python version
-|--------------| ---- | ---- | ---- |
-| 1.16.0       | 1.1.x | 3.2.x or 4.0.x or 4.1.x | ^3.7
-| 1.15.0       | 1.0.x | 3.2.x or 4.0.x or 4.1.x | ^3.7
-| 1.14.0       | 0.990+ | 3.2.x or 4.0.x or 4.1.x | ^3.7
-| 1.13.0       | 0.980+ | 3.2.x or 4.0.x or 4.1.x | ^3.7
-| 1.12.0       | 0.931+ | 3.2.x or 4.0.x | ^3.7
-| 1.11.0       | 0.931+ | 3.2.x | ^3.7
-| 1.10.0       | 0.931+ | 3.2.x | ^3.7
-| 1.9.0        | 0.910 | 3.2.x | ^3.6
-| 1.8.0        | 0.812 | 3.1.x | ^3.6
-| 1.7.0        | 0.790 | 2.2.x \|\| 3.x | ^3.6
-| 1.6.0        | 0.780 | 2.2.x \|\| 3.x | ^3.6
-| 1.5.0        | 0.770 | 2.2.x \|\| 3.x | ^3.6
-| 1.4.0        | 0.760 | 2.2.x \|\| 3.x | ^3.6
-| 1.3.0        | 0.750 | 2.2.x \|\| 3.x | ^3.6
-| 1.2.0        | 0.730 | 2.2.x | ^3.6
-| 1.1.0        | 0.720 | 2.2.x | ^3.6
-| 0.12.x       | old semantic analyzer (<0.711), dmypy support | 2.1.x | ^3.6
+| django-stubs   | Mypy version | Django version | Django partial support | Python version |
+|----------------|--------------|----------------|------------------------|----------------|
+| (next release) | 1.2.x        | 4.2            | 4.1, 3.2               | 3.8 - 3.11     |
+| 4.2.0          | 1.2.x        | 4.2            | 4.1, 4.0, 3.2          | 3.7 - 3.11     |
+| 1.16.0         | 1.1.x        | 4.1            | 4.0, 3.2               | 3.7 - 3.11     |
+| 1.15.0         | 1.0.x        | 4.1            | 4.0, 3.2               | 3.7 - 3.11     |
+| 1.14.0         | 0.990+       | 4.1            | 4.0, 3.2               | 3.7 - 3.11     |
+
+## Features
+
+### Type checking of Model Meta attributes
+
+By inheriting from the `TypedModelMeta` class, you can ensure you're using correct types for
+attributes:
+
+```python
+from django.db import models
+from django_stubs_ext.db.models import TypedModelMeta
+
+class MyModel(models.Model):
+    example = models.CharField(max_length=100)
+
+    class Meta(TypedModelMeta):
+        ordering = ["example"]
+        constraints = [
+            models.UniqueConstraint(fields=["example"], name="unique_example"),
+        ]
+```
+
 
 ## FAQ
 
@@ -114,8 +124,6 @@ This happens because these Django classes do not support [`__class_getitem__`](h
 
    django_stubs_ext.monkeypatch()
    ```
-
-   Note: This monkey patching approach will only work when using Python 3.7 and higher, when the `__class_getitem__` magic method was introduced.
 
    You can add extra types to patch with `django_stubs_ext.monkeypatch(extra_classes=[YourDesiredType])`
 

@@ -50,6 +50,7 @@ class Query(BaseExpression):
     default_ordering: bool
     standard_ordering: bool
     used_aliases: set[str]
+    where: WhereNode
     filter_is_sticky: bool
     subquery: bool
     group_by: None | Sequence[Combinable] | Sequence[str] | Literal[True]
@@ -197,6 +198,9 @@ class Query(BaseExpression):
     def check_filterable(self, expression: Any) -> None: ...
     def build_lookup(self, lookups: Sequence[str], lhs: Expression | Query, rhs: Any) -> Lookup: ...
     def try_transform(self, lhs: Expression | Query, name: str) -> Transform: ...
+    def join(
+        self, join: type[BaseTable | Join], reuse: str | None = ..., reuse_with_filtered_relation: bool = ...
+    ) -> str: ...
 
 class JoinPromoter:
     connector: str

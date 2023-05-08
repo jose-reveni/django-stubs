@@ -6,11 +6,9 @@ from email.mime.base import MIMEBase
 from email.mime.message import MIMEMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any, overload
 
-# switch to tuple once https://github.com/python/mypy/issues/11098 is fixed
-# remove Optional once python 3.7 is dropped (Tuple[str | None, ...] works with mypy on py3.10)
-from typing import Any, Optional, Tuple, overload  # noqa: Y022, Y037
-
+from django.utils.functional import _StrOrPromise
 from typing_extensions import TypeAlias
 
 utf8_charset: Any
@@ -65,12 +63,8 @@ class SafeMIMEMultipart(MIMEMixin, MIMEMultipart):  # type: ignore
     def __setitem__(self, name: str, val: str) -> None: ...
 
 _AttachmentContent: TypeAlias = bytes | EmailMessage | Message | SafeMIMEText | str
-# switch to tuple once https://github.com/python/mypy/issues/11098 is fixed
-# remove Optional once python 3.7 is dropped (Tuple[str | None, ...] works with mypy on py3.10)
 _AttachmentTuple: TypeAlias = (
-    Tuple[str, _AttachmentContent]
-    | Tuple[Optional[str], _AttachmentContent, str]
-    | Tuple[str, _AttachmentContent, None]
+    tuple[str, _AttachmentContent] | tuple[str | None, _AttachmentContent, str] | tuple[str, _AttachmentContent, None]
 )
 
 class EmailMessage:
@@ -82,15 +76,15 @@ class EmailMessage:
     bcc: list[Any]
     reply_to: list[Any]
     from_email: str
-    subject: str
-    body: str
+    subject: _StrOrPromise
+    body: _StrOrPromise
     attachments: list[Any]
     extra_headers: dict[Any, Any]
     connection: Any
     def __init__(
         self,
-        subject: str = ...,
-        body: str | None = ...,
+        subject: _StrOrPromise = ...,
+        body: _StrOrPromise | None = ...,
         from_email: str | None = ...,
         to: Sequence[str] | None = ...,
         bcc: Sequence[str] | None = ...,
@@ -118,8 +112,8 @@ class EmailMultiAlternatives(EmailMessage):
     alternatives: list[tuple[_AttachmentContent, str]]
     def __init__(
         self,
-        subject: str = ...,
-        body: str | None = ...,
+        subject: _StrOrPromise = ...,
+        body: _StrOrPromise | None = ...,
         from_email: str | None = ...,
         to: Sequence[str] | None = ...,
         bcc: Sequence[str] | None = ...,

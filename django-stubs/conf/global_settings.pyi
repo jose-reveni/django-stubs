@@ -168,10 +168,16 @@ IGNORABLE_404_URLS: list[Pattern[str]]
 # A secret key for this particular Django installation. Used in secret-key
 # hashing algorithms. Set this in your settings, or Django will complain
 # loudly.
-SECRET_KEY: str
+SECRET_KEY: str | bytes
+
+# A list of fallback secret keys for a particular Django installation. These
+# are used to allow rotation of the SECRET_KEY.
+SECRET_KEY_FALLBACKS: list[str | bytes]
 
 # Default file storage mechanism that holds media.
 DEFAULT_FILE_STORAGE: str
+
+STORAGES: dict[str, dict[str, Any]]
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/var/www/example.com/media/"
