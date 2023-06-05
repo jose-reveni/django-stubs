@@ -2,7 +2,6 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import Any, TypeVar, overload
 from uuid import UUID
 
-from _typeshed import Self
 from django.core import validators  # due to weird mypy.stubtest error
 from django.db.models.base import Model
 from django.db.models.expressions import Combinable
@@ -22,7 +21,7 @@ from django.db.models.fields.reverse_related import OneToOneRel as OneToOneRel
 from django.db.models.manager import RelatedManager
 from django.db.models.query_utils import FilteredRelation, PathInfo, Q
 from django.utils.functional import _StrOrPromise
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 RECURSIVE_RELATIONSHIP_CONSTANT: Literal["self"]
 
@@ -90,10 +89,20 @@ class ForeignObject(RelatedField[_ST, _GT]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
+        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesT | None = ...,
     ) -> None: ...
+    # class access
+    @overload
+    def __get__(self, instance: None, owner: Any) -> ForwardManyToOneDescriptor[Self]: ...
+    # Model instance access
+    @overload
+    def __get__(self, instance: Model, owner: Any) -> _GT: ...
+    # non-Model instances
+    @overload
+    def __get__(self: Self, instance: Any, owner: Any) -> Self: ...
     def resolve_related_fields(self) -> list[tuple[Field, Field]]: ...
     @property
     def related_fields(self) -> list[tuple[Field, Field]]: ...
@@ -139,19 +148,11 @@ class ForeignKey(ForeignObject[_ST, _GT]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
+        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesT | None = ...,
     ) -> None: ...
-    # class access
-    @overload
-    def __get__(self, instance: None, owner: Any) -> ForwardManyToOneDescriptor: ...
-    # Model instance access
-    @overload
-    def __get__(self, instance: Model, owner: Any) -> _GT: ...
-    # non-Model instances
-    @overload
-    def __get__(self: Self, instance: Any, owner: Any) -> Self: ...
 
 class OneToOneField(ForeignKey[_ST, _GT]):
     _pyi_private_set_type: Any | Combinable
@@ -188,13 +189,14 @@ class OneToOneField(ForeignKey[_ST, _GT]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
+        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesT | None = ...,
     ) -> None: ...
     # class access
     @overload
-    def __get__(self, instance: None, owner: Any) -> ForwardOneToOneDescriptor: ...
+    def __get__(self, instance: None, owner: Any) -> ForwardOneToOneDescriptor[Self]: ...
     # Model instance access
     @overload
     def __get__(self, instance: Model, owner: Any) -> _GT: ...
@@ -248,13 +250,14 @@ class ManyToManyField(RelatedField[_ST, _GT]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
+        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesT | None = ...,
     ) -> None: ...
     # class access
     @overload
-    def __get__(self, instance: None, owner: Any) -> ManyToManyDescriptor: ...
+    def __get__(self, instance: None, owner: Any) -> ManyToManyDescriptor[Self]: ...
     # Model instance access
     @overload
     def __get__(self, instance: Model, owner: Any) -> _GT: ...
