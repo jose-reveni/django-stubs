@@ -1,5 +1,12 @@
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from typing import Any, Generic, Optional, TypeVar, Union  # noqa: Y037  # https://github.com/python/mypy/issues/12211
+from typing import (  # noqa: Y037  # https://github.com/python/mypy/issues/12211
+    Any,
+    Generic,
+    Literal,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from django import forms
 from django.contrib.admin.filters import FieldListFilter, ListFilter
@@ -33,7 +40,7 @@ from django.urls.resolvers import URLPattern
 from django.utils.datastructures import _ListOrTuple
 from django.utils.functional import _StrOrPromise
 from django.utils.safestring import SafeString
-from typing_extensions import Literal, TypeAlias, TypedDict
+from typing_extensions import TypeAlias, TypedDict
 
 IS_POPUP_VAR: str
 TO_FIELD_VAR: str
@@ -81,7 +88,7 @@ class BaseModelAdmin(Generic[_ModelT]):
     raw_id_fields: Sequence[str]
     fields: _FieldGroups | None
     exclude: Sequence[str] | None
-    fieldsets: Optional[_FieldsetSpec]
+    fieldsets: Optional[_FieldsetSpec]  # noqa: UP007
     form: type[forms.ModelForm[_ModelT]]
     filter_vertical: Sequence[str]
     filter_horizontal: Sequence[str]
@@ -142,6 +149,7 @@ class ModelAdmin(BaseModelAdmin[_ModelT]):
     list_max_show_all: int
     list_editable: Sequence[str]
     search_fields: Sequence[str]
+    search_help_text: _StrOrPromise | None
     date_hierarchy: str | None
     save_as: bool
     save_as_continue: bool
@@ -272,6 +280,9 @@ class ModelAdmin(BaseModelAdmin[_ModelT]):
     def history_view(
         self, request: HttpRequest, object_id: str, extra_context: dict[str, Any] | None = ...
     ) -> HttpResponse: ...
+    def get_formset_kwargs(
+        self, request: HttpRequest, obj: _ModelT, inline: InlineModelAdmin[Any, _ModelT], prefix: str
+    ) -> dict[str, Any]: ...
 
 _ChildModelT = TypeVar("_ChildModelT", bound=Model)
 _ParentModelT = TypeVar("_ParentModelT", bound=Model)

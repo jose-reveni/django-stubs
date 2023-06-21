@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from _typeshed import Self
 from django.db.backends.base.base import BaseDatabaseWrapper
@@ -7,7 +7,6 @@ from django.db.models.expressions import Expression, Func
 from django.db.models.query_utils import RegisterLookupMixin
 from django.db.models.sql.compiler import SQLCompiler, _AsSqlType, _ParamT
 from django.utils.datastructures import OrderedSet
-from typing_extensions import Literal
 
 _T = TypeVar("_T")
 
@@ -33,7 +32,7 @@ class Lookup(Generic[_T]):
     def process_rhs(self, compiler: SQLCompiler, connection: BaseDatabaseWrapper) -> _AsSqlType: ...
     def rhs_is_direct_value(self) -> bool: ...
     def relabeled_clone(self: Self, relabels: Mapping[str, str]) -> Self: ...
-    def get_group_by_cols(self, alias: str | None = ...) -> list[Expression]: ...
+    def get_group_by_cols(self) -> list[Expression]: ...
     def as_sql(self, compiler: SQLCompiler, connection: BaseDatabaseWrapper) -> _AsSqlType: ...
     def as_oracle(self, compiler: SQLCompiler, connection: BaseDatabaseWrapper) -> _AsSqlType: ...
     @property

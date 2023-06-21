@@ -1,9 +1,8 @@
 from collections.abc import Iterator, Mapping
-from typing import IO, Any
+from typing import IO, Any, Literal
 
 from django.http.request import QueryDict
 from django.utils.datastructures import ImmutableList, MultiValueDict
-from typing_extensions import Literal
 
 class MultiPartParserError(Exception): ...
 class InputStreamExhausted(Exception): ...
@@ -55,5 +54,3 @@ class BoundaryIter:
 class Parser:
     def __init__(self, stream: LazyStream, boundary: bytes) -> None: ...
     def __iter__(self) -> Iterator[tuple[str, dict[str, tuple[str, dict[str, bytes | str]]], LazyStream]]: ...
-
-def parse_header(line: bytes) -> tuple[str, dict[str, bytes]]: ...

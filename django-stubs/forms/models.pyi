@@ -3,6 +3,7 @@ from typing import (  # noqa: Y037  # https://github.com/python/mypy/issues/1221
     Any,
     ClassVar,
     Generic,
+    Literal,
     TypeVar,
     Union,
     overload,
@@ -23,7 +24,7 @@ from django.forms.utils import ErrorList, _DataT, _FilesT
 from django.forms.widgets import Widget
 from django.utils.datastructures import _IndexableCollection, _ListOrTuple, _PropertyDescriptor
 from django.utils.functional import _StrOrPromise
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import TypeAlias
 
 ALL_FIELDS: Literal["__all__"]
 
@@ -69,6 +70,7 @@ class ModelFormOptions(Generic[_M]):
     help_texts: _HelpTexts | None
     error_messages: _ErrorMessages | None
     field_classes: dict[str, type[Field]] | None
+    formfield_callback: _FormFieldCallback | None
     def __init__(self, options: type | None = ...) -> None: ...
 
 class ModelFormMetaclass(DeclarativeFieldsMetaclass): ...
@@ -115,6 +117,7 @@ _ModelFormT = TypeVar("_ModelFormT", bound=ModelForm)
 
 class BaseModelFormSet(Generic[_M, _ModelFormT], BaseFormSet[_ModelFormT]):
     model: type[_M]
+    edit_only: bool
     unique_fields: Collection[str]
     queryset: QuerySet[_M] | None
     initial_extra: Sequence[dict[str, Any]] | None
@@ -171,6 +174,8 @@ def modelformset_factory(
     field_classes: Mapping[str, type[Field]] | None = ...,
     absolute_max: int | None = ...,
     can_delete_extra: bool = ...,
+    renderer: BaseRenderer | None = ...,
+    edit_only: bool = ...,
 ) -> type[BaseModelFormSet[_M, _ModelFormT]]: ...
 
 class BaseInlineFormSet(Generic[_M, _ParentM, _ModelFormT], BaseModelFormSet[_M, _ModelFormT]):
@@ -219,6 +224,8 @@ def inlineformset_factory(
     field_classes: Mapping[str, type[Field]] | None = ...,
     absolute_max: int | None = ...,
     can_delete_extra: bool = ...,
+    renderer: BaseRenderer | None = ...,
+    edit_only: bool = ...,
 ) -> type[BaseInlineFormSet[_M, _ParentM, _ModelFormT]]: ...
 
 class InlineForeignKeyField(Field):

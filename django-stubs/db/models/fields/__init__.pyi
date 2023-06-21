@@ -13,7 +13,6 @@ from django.db.models import Model
 from django.db.models.expressions import Col, Combinable
 from django.db.models.fields.reverse_related import ForeignObjectRel
 from django.db.models.query_utils import Q, RegisterLookupMixin
-from django.forms import Field as FormField
 from django.forms import Widget
 from django.utils.datastructures import DictWrapper
 from django.utils.functional import _Getter, _StrOrPromise
@@ -149,7 +148,7 @@ class Field(RegisterLookupMixin, Generic[_ST, _GT]):
     creation_counter: int
     auto_creation_counter: int
     default_validators: Sequence[validators._ValidatorCallable]
-    default_error_messages: dict[str, str]
+    default_error_messages: _ErrorMessagesT
     hidden: bool
     system_check_removed_details: Any | None
     system_check_deprecated_details: Any | None
@@ -428,7 +427,7 @@ class GenericIPAddressField(Field[_ST, _GT]):
     _pyi_private_set_type: str | int | Callable[..., Any] | Combinable
     _pyi_private_get_type: str
 
-    default_error_messages: dict[str, str]
+    default_error_messages: _ErrorMessagesT
     unpack_ipv4: bool
     protocol: str
     def __init__(
