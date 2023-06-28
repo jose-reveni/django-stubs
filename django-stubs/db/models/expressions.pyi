@@ -1,9 +1,8 @@
 import datetime
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from decimal import Decimal
 from typing import Any, Generic, Literal, TypeVar
 
-from _typeshed import Self
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.models import Q
 from django.db.models.fields import Field
@@ -11,7 +10,7 @@ from django.db.models.lookups import Lookup, Transform
 from django.db.models.query import QuerySet
 from django.db.models.sql.compiler import SQLCompiler, _AsSqlType
 from django.db.models.sql.query import Query
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias
 
 class SQLiteNumericMixin:
     def as_sqlite(self, compiler: SQLCompiler, connection: BaseDatabaseWrapper, **extra_context: Any) -> _AsSqlType: ...
@@ -71,7 +70,7 @@ class BaseExpression:
     @property
     def contains_column_references(self) -> bool: ...
     def resolve_expression(
-        self: Self,
+        self,
         query: Any = ...,
         allow_joins: bool = ...,
         reuse: set[str] | None = ...,
@@ -88,22 +87,22 @@ class BaseExpression:
     def convert_value(self) -> Callable: ...
     def get_lookup(self, lookup: str) -> type[Lookup] | None: ...
     def get_transform(self, name: str) -> type[Transform] | None: ...
-    def relabeled_clone(self: Self, change_map: dict[str | None, str]) -> Self: ...
-    def copy(self: Self) -> Self: ...
-    def get_group_by_cols(self: Self) -> list[Self]: ...
+    def relabeled_clone(self, change_map: dict[str | None, str]) -> Self: ...
+    def copy(self) -> Self: ...
+    def get_group_by_cols(self) -> list[Self]: ...
     def get_source_fields(self) -> list[Field | None]: ...
     def asc(
         self,
         *,
         descending: bool = ...,
-        nulls_first: bool = ...,
-        nulls_last: bool = ...,
+        nulls_first: bool | None = ...,
+        nulls_last: bool | None = ...,
     ) -> OrderBy: ...
     def desc(
         self,
         *,
-        nulls_first: bool = ...,
-        nulls_last: bool = ...,
+        nulls_first: bool | None = ...,
+        nulls_last: bool | None = ...,
     ) -> OrderBy: ...
     def reverse_ordering(self) -> BaseExpression: ...
     def flatten(self) -> Iterator[BaseExpression]: ...
@@ -135,27 +134,28 @@ class F(Combinable):
         summarize: bool = ...,
         for_save: bool = ...,
     ) -> F: ...
+    def replace_expressions(self, replacements: Mapping[F, Any]) -> F: ...
     def asc(
         self,
         *,
         descending: bool = ...,
-        nulls_first: bool = ...,
-        nulls_last: bool = ...,
+        nulls_first: bool | None = ...,
+        nulls_last: bool | None = ...,
     ) -> OrderBy: ...
     def desc(
         self,
         *,
-        nulls_first: bool = ...,
-        nulls_last: bool = ...,
+        nulls_first: bool | None = ...,
+        nulls_last: bool | None = ...,
     ) -> OrderBy: ...
-    def deconstruct(self) -> Any: ...  # fake
+    def copy(self) -> F: ...
 
 class ResolvedOuterRef(F): ...
 
 class OuterRef(F):
     def __init__(self, name: str | OuterRef) -> None: ...
     contains_aggregate: bool
-    def relabeled_clone(self: Self, relabels: Any) -> Self: ...
+    def relabeled_clone(self, relabels: Any) -> Self: ...
 
 class Func(SQLiteNumericMixin, Expression):
     function: str
@@ -247,9 +247,11 @@ class OrderBy(Expression):
         self,
         expression: Expression | F | Subquery,
         descending: bool = ...,
-        nulls_first: bool = ...,
-        nulls_last: bool = ...,
+        nulls_first: bool | None = ...,
+        nulls_last: bool | None = ...,
     ) -> None: ...
+    def asc(self) -> None: ...  # type: ignore[override]
+    def desc(self) -> None: ...  # type: ignore[override]
 
 class Window(SQLiteNumericMixin, Expression):
     template: str
@@ -261,7 +263,7 @@ class Window(SQLiteNumericMixin, Expression):
         self,
         expression: BaseExpression,
         partition_by: str | Iterable[BaseExpression | F] | F | BaseExpression | None = ...,
-        order_by: Sequence[BaseExpression | F] | BaseExpression | F | None = ...,
+        order_by: Sequence[BaseExpression | F | str] | BaseExpression | F | str | None = ...,
         frame: WindowFrame | None = ...,
         output_field: Field | None = ...,
     ) -> None: ...

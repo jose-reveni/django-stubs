@@ -49,6 +49,7 @@ We rely on different `django` and `mypy` versions:
 
 | django-stubs   | Mypy version | Django version | Django partial support | Python version |
 |----------------|--------------|----------------|------------------------|----------------|
+| 4.2.2          | 1.4.x        | 4.2            | 4.1, 3.2               | 3.8 - 3.11     |
 | 4.2.1          | 1.3.x        | 4.2            | 4.1, 3.2               | 3.8 - 3.11     |
 | 4.2.0          | 1.2.x        | 4.2            | 4.1, 4.0, 3.2          | 3.7 - 3.11     |
 | 1.16.0         | 1.1.x        | 4.1            | 4.0, 3.2               | 3.7 - 3.11     |
@@ -79,6 +80,23 @@ class MyModel(models.Model):
 ### Other typed base classes
 
 * `django_stubs_ext.db.router.TypedDatabaseRouter` can be used as base when implementing custom database routers.
+
+## Settings
+
+django-stubs has a few settings, which you can list in:
+
+* `pyproject.toml`, under the table `[tool.django-stubs]`
+* `mypy.ini` under the table `[mypy.plugins.django-stubs]`
+
+The supported settings are:
+
+- `django_settings_module`, a string.
+
+  Specify the import path of your settings module, the same as Django’s [`DJANGO_SETTINGS_MODULE` environment variable](https://docs.djangoproject.com/en/stable/topics/settings/#designating-the-settings).
+
+- `strict_settings`, a boolean, default `true`.
+
+  Set to `false` if using dynamic settings, as [described below](https://github.com/typeddjango/django-stubs#how-to-use-a-custom-library-to-handle-django-settings).
 
 ## FAQ
 
@@ -310,6 +328,53 @@ The lazy translation functions of Django (such as `gettext_lazy`) return a `Prom
 If you encounter this error in your own code, you can either cast the `Promise` to `str` (causing the translation to be evaluated), or use the `StrPromise` or `StrOrPromise` types from `django-stubs-ext` in type hints. Which solution to choose depends depends on the particular case. See [working with lazy translation objects](https://docs.djangoproject.com/en/4.1/topics/i18n/translation/#working-with-lazy-translation-objects) in the Django documentation for more information.
 
 If this is reported on Django code, please report an issue or open a pull request to fix the type hints.
+
+### How to use a custom library to handle Django settings?
+
+Using something like [`django-split-settings`](https://github.com/wemake-services/django-split-settings) or [`django-configurations`](https://github.com/jazzband/django-configurations) will make it hard for mypy to infer your settings.
+
+This might also be the case when using something like:
+
+```python
+try:
+    from .local_settings import *
+except Exception:
+    pass
+```
+
+So, mypy would not like this code:
+
+```python
+from django.conf import settings
+
+settings.CUSTOM_VALUE  # E: 'Settings' object has no attribute 'CUSTOM_SETTING'
+```
+
+To handle this corner case we have a special setting `strict_settings` (`True` by default),
+you can switch it to `False` to always return `Any` and not raise any errors if runtime settings module has the given value,
+for example `pyproject.toml`:
+
+```toml
+[tool.django-stubs]
+strict_settings = false
+```
+
+or `mypy.ini`:
+
+```ini
+[mypy.plugins.django-stubs]
+strict_settings = false
+```
+
+And then:
+
+```python
+# Works:
+reveal_type(settings.EXISTS_IN_RUNTIME)  # N: Any
+
+# Errors:
+reveal_type(settings.MISSING)  # E: 'Settings' object has no attribute 'MISSING'
+```
 
 ## Related projects
 

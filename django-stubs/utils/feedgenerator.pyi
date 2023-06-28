@@ -26,7 +26,7 @@ class SyndicationFeed:
         feed_copyright: str | None = ...,
         feed_guid: str | None = ...,
         ttl: int | None = ...,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None: ...
     def add_item(
         self,
@@ -45,7 +45,7 @@ class SyndicationFeed:
         ttl: int | None = ...,
         updateddate: datetime.datetime | None = ...,
         enclosures: list[Enclosure] | None = ...,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None: ...
     def num_items(self) -> int: ...
     def root_attributes(self) -> dict[Any, Any]: ...
@@ -64,6 +64,7 @@ class Enclosure:
 
 class RssFeed(SyndicationFeed):
     content_type: str
+    def rss_attributes(self) -> dict[str, str]: ...
     def write_items(self, handler: ContentHandler) -> None: ...
     def endChannelElement(self, handler: ContentHandler) -> None: ...
 

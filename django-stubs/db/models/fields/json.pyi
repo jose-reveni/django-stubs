@@ -2,12 +2,12 @@ import json
 from collections.abc import Callable
 from typing import Any
 
-from _typeshed import Self
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.models import lookups
 from django.db.models.lookups import PostgresOperatorLookup, Transform
 from django.db.models.sql.compiler import SQLCompiler
 from django.utils.functional import _StrOrPromise
+from typing_extensions import Self
 
 from . import Field
 from .mixins import CheckFieldDefaultMixin
@@ -21,7 +21,7 @@ class JSONField(CheckFieldDefaultMixin, Field):
         name: str | None = ...,
         encoder: type[json.JSONEncoder] | None = ...,
         decoder: type[json.JSONDecoder] | None = ...,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None: ...
 
 class DataContains(PostgresOperatorLookup): ...
@@ -44,6 +44,7 @@ class HasAnyKeys(HasKeys):
 
 class HasKeyOrArrayIndex(HasKey): ...
 class JSONExact(lookups.Exact): ...
+class CaseInsensitiveMixin: ...
 class JSONIContains(CaseInsensitiveMixin, lookups.IContains): ...
 
 class KeyTransform(Transform):
@@ -57,14 +58,13 @@ class KeyTextTransform(KeyTransform):
     postgres_operator: str
     postgres_nested_operator: str
     @classmethod
-    def from_lookup(cls: type[Self], lookup: str) -> Self: ...
+    def from_lookup(cls, lookup: str) -> Self: ...
 
 KT: Callable[[str], KeyTextTransform]
 
 class KeyTransformTextLookupMixin:
     def __init__(self, key_transform: Any, *args: Any, **kwargs: Any) -> None: ...
 
-class CaseInsensitiveMixin: ...
 class KeyTransformIsNull(lookups.IsNull): ...
 class KeyTransformIn(lookups.In): ...
 class KeyTransformExact(JSONExact): ...
