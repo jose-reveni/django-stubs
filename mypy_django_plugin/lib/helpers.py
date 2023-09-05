@@ -58,7 +58,7 @@ def get_django_metadata(model_info: TypeInfo) -> DjangoTypeMetadata:
 
 
 def get_django_metadata_bases(
-    model_info: TypeInfo, key: Literal["baseform_bases", "manager_bases", "model_bases", "queryset_bases"]
+    model_info: TypeInfo, key: Literal["baseform_bases", "manager_bases", "queryset_bases"]
 ) -> Dict[str, int]:
     return get_django_metadata(model_info).setdefault(key, cast(Dict[str, int], {}))
 
@@ -217,7 +217,8 @@ def get_private_descriptor_type(type_info: TypeInfo, private_field_name: str, is
 
 def get_field_lookup_exact_type(api: TypeChecker, field: "Field[Any, Any]") -> MypyType:
     if isinstance(field, (RelatedField, ForeignObjectRel)):
-        lookup_type_class = field.related_model
+        # Not using field.related_model because that may have str value "self"
+        lookup_type_class = field.remote_field.model
         rel_model_info = lookup_class_typeinfo(api, lookup_type_class)
         if rel_model_info is None:
             return AnyType(TypeOfAny.from_error)
@@ -378,7 +379,9 @@ def check_types_compatible(
     api.check_subtype(actual_type, expected_type, ctx.context, error_message, "got", "expected")
 
 
-def add_new_sym_for_info(info: TypeInfo, *, name: str, sym_type: MypyType, no_serialize: bool = False) -> None:
+def add_new_sym_for_info(
+    info: TypeInfo, name: str, sym_type: MypyType, *, no_serialize: bool = False, is_classvar: bool = False
+) -> None:
     # type=: type of the variable itself
     var = Var(name=name, type=sym_type)
     # var.info: type of the object variable is bound to
@@ -386,6 +389,7 @@ def add_new_sym_for_info(info: TypeInfo, *, name: str, sym_type: MypyType, no_se
     var._fullname = info.fullname + "." + name
     var.is_initialized_in_class = True
     var.is_inferred = True
+    var.is_classvar = is_classvar
     info.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True, no_serialize=no_serialize)
 
 

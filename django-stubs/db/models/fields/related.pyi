@@ -5,7 +5,7 @@ from uuid import UUID
 from django.core import validators  # due to weird mypy.stubtest error
 from django.db.models.base import Model
 from django.db.models.expressions import Combinable
-from django.db.models.fields import Field, _AllLimitChoicesTo, _ErrorMessagesT, _FieldChoices, _LimitChoicesTo
+from django.db.models.fields import Field, _AllLimitChoicesTo, _ErrorMessagesMapping, _FieldChoices, _LimitChoicesTo
 from django.db.models.fields.mixins import FieldCacheMixin
 from django.db.models.fields.related_descriptors import ForwardManyToOneDescriptor as ForwardManyToOneDescriptor
 from django.db.models.fields.related_descriptors import (  # noqa: F401
@@ -43,7 +43,7 @@ class RelatedField(FieldCacheMixin, Field[_ST, _GT]):
     rel_class: type[ForeignObjectRel]
     swappable: bool
     @property
-    def related_model(self) -> type[Model]: ...  # type: ignore
+    def related_model(self) -> type[Model] | Literal["self"]: ...  # type: ignore
     def get_forward_related_filter(self, obj: Model) -> dict[str, int | UUID]: ...
     def get_reverse_related_filter(self, obj: Model) -> Q: ...
     @property
@@ -92,7 +92,7 @@ class ForeignObject(RelatedField[_ST, _GT]):
         db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
-        error_messages: _ErrorMessagesT | None = ...,
+        error_messages: _ErrorMessagesMapping | None = ...,
     ) -> None: ...
     # class access
     @overload
@@ -151,7 +151,7 @@ class ForeignKey(ForeignObject[_ST, _GT]):
         db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
-        error_messages: _ErrorMessagesT | None = ...,
+        error_messages: _ErrorMessagesMapping | None = ...,
     ) -> None: ...
 
 class OneToOneField(ForeignKey[_ST, _GT]):
@@ -192,7 +192,7 @@ class OneToOneField(ForeignKey[_ST, _GT]):
         db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
-        error_messages: _ErrorMessagesT | None = ...,
+        error_messages: _ErrorMessagesMapping | None = ...,
     ) -> None: ...
     # class access
     @overload
@@ -253,7 +253,7 @@ class ManyToManyField(RelatedField[_ST, _GT]):
         db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
-        error_messages: _ErrorMessagesT | None = ...,
+        error_messages: _ErrorMessagesMapping | None = ...,
     ) -> None: ...
     # class access
     @overload

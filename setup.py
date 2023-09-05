@@ -33,12 +33,12 @@ dependencies = [
 
 # Keep compatible-mypy major.minor version pinned to what we use in CI (requirements.txt)
 extras_require = {
-    "compatible-mypy": ["mypy==1.4.*"],
+    "compatible-mypy": ["mypy==1.5.*"],
 }
 
 setup(
     name="django-stubs",
-    version="4.2.3",
+    version="4.2.4",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
