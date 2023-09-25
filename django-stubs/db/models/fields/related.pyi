@@ -43,7 +43,7 @@ class RelatedField(FieldCacheMixin, Field[_ST, _GT]):
     rel_class: type[ForeignObjectRel]
     swappable: bool
     @property
-    def related_model(self) -> type[Model] | Literal["self"]: ...  # type: ignore
+    def related_model(self) -> type[Model] | Literal["self"]: ...  # type: ignore[override]
     def get_forward_related_filter(self, obj: Model) -> dict[str, int | UUID]: ...
     def get_reverse_related_filter(self, obj: Model) -> Q: ...
     @property
@@ -238,7 +238,6 @@ class ManyToManyField(RelatedField[_ST, _GT]):
         max_length: int | None = ...,
         unique: bool = ...,
         blank: bool = ...,
-        null: bool = ...,
         db_index: bool = ...,
         default: Any = ...,
         editable: bool = ...,
@@ -252,7 +251,6 @@ class ManyToManyField(RelatedField[_ST, _GT]):
         db_column: str | None = ...,
         db_comment: str | None = ...,
         db_tablespace: str | None = ...,
-        validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesMapping | None = ...,
     ) -> None: ...
     # class access

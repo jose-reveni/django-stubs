@@ -2,6 +2,7 @@ import os
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, Literal, Optional, Sequence, Set, Tuple, Type, Union
 
 from django.core.exceptions import FieldDoesNotExist, FieldError
@@ -13,7 +14,6 @@ from django.db.models.fields.related import ForeignKey, RelatedField
 from django.db.models.fields.reverse_related import ForeignObjectRel
 from django.db.models.lookups import Exact
 from django.db.models.sql.query import Query
-from django.utils.functional import cached_property
 from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo
 from mypy.plugin import MethodContext
@@ -29,7 +29,7 @@ try:
     from django.contrib.postgres.fields import ArrayField
 except ImportError:
 
-    class ArrayField:  # type: ignore
+    class ArrayField:  # type: ignore[no-redef]
         pass
 
 
@@ -60,11 +60,11 @@ def initialize_django(settings_module: str) -> Tuple["Apps", "LazySettings"]:
         from django.apps import apps
         from django.conf import settings
 
-        apps.get_swappable_settings_name.cache_clear()  # type: ignore
+        apps.get_swappable_settings_name.cache_clear()  # type: ignore[attr-defined]
         apps.clear_cache()
 
         if not settings.configured:
-            settings._setup()  # type: ignore
+            settings._setup()  # type: ignore[misc]
         apps.populate(settings.INSTALLED_APPS)
 
     assert apps.apps_ready, "Apps are not ready"
@@ -270,10 +270,6 @@ class DjangoContext:
     def all_registered_model_class_fullnames(self) -> Set[str]:
         return {helpers.get_class_fullname(cls) for cls in self.all_registered_model_classes}
 
-    def get_attname(self, field: "Field[Any, Any]") -> str:
-        attname = field.attname
-        return attname
-
     def get_field_nullability(self, field: Union["Field[Any, Any]", ForeignObjectRel], method: Optional[str]) -> bool:
         if method in ("values", "values_list"):
             return field.null
@@ -342,7 +338,7 @@ class DjangoContext:
             related_model_cls = field.field.model
 
         if isinstance(related_model_cls, str):
-            if related_model_cls == "self":  # type: ignore
+            if related_model_cls == "self":  # type: ignore[unreachable]
                 # same model
                 related_model_cls = field.model
             elif "." not in related_model_cls:

@@ -6,7 +6,8 @@ from django.db.models.fields.related import RelatedField
 from django.db.models.fields.reverse_related import ForeignObjectRel
 from mypy.nodes import AssignmentStmt, NameExpr, TypeInfo
 from mypy.plugin import FunctionContext
-from mypy.types import AnyType, Instance, TypeOfAny, UnionType
+from mypy.semanal_shared import parse_bool
+from mypy.types import AnyType, Instance, ProperType, TypeOfAny, UnionType
 from mypy.types import Type as MypyType
 
 from mypy_django_plugin.django.context import DjangoContext
@@ -90,18 +91,20 @@ def fill_descriptor_types_for_related_field(ctx: FunctionContext, django_context
     typechecker_api = helpers.get_typechecker_api(ctx)
 
     related_model_info = helpers.lookup_class_typeinfo(typechecker_api, related_model)
+    related_model_type: ProperType
     if related_model_info is None:
         # maybe no type stub
         related_model_type = AnyType(TypeOfAny.unannotated)
     else:
-        related_model_type = Instance(related_model_info, [])  # type: ignore
+        related_model_type = Instance(related_model_info, [])
 
     related_model_to_set_info = helpers.lookup_class_typeinfo(typechecker_api, related_model_to_set)
+    related_model_to_set_type: ProperType
     if related_model_to_set_info is None:
         # maybe no type stub
         related_model_to_set_type = AnyType(TypeOfAny.unannotated)
     else:
-        related_model_to_set_type = Instance(related_model_to_set_info, [])  # type: ignore
+        related_model_to_set_type = Instance(related_model_to_set_info, [])
 
     # replace Any with referred_to_type
     return reparametrize_related_field_type(
@@ -134,12 +137,12 @@ def set_descriptor_types_for_field(
     is_nullable = False
     null_expr = helpers.get_call_argument_by_name(ctx, "null")
     if null_expr is not None:
-        is_nullable = helpers.parse_bool(null_expr) or False
+        is_nullable = parse_bool(null_expr) or False
     # Allow setting field value to `None` when a field is primary key and has a default that can produce a value
     default_expr = helpers.get_call_argument_by_name(ctx, "default")
     primary_key_expr = helpers.get_call_argument_by_name(ctx, "primary_key")
     if default_expr is not None and primary_key_expr is not None:
-        is_set_nullable = helpers.parse_bool(primary_key_expr) or False
+        is_set_nullable = parse_bool(primary_key_expr) or False
 
     set_type, get_type = get_field_descriptor_types(
         default_return_type.type,

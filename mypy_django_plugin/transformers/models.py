@@ -20,7 +20,8 @@ from mypy.nodes import (
 from mypy.plugin import AnalyzeTypeContext, AttributeContext, CheckerPluginInterface, ClassDefContext
 from mypy.plugins import common
 from mypy.semanal import SemanticAnalyzer
-from mypy.types import AnyType, Instance, LiteralType, TypedDictType, TypeOfAny, TypeType, get_proper_type
+from mypy.typeanal import TypeAnalyser
+from mypy.types import AnyType, Instance, LiteralType, ProperType, TypedDictType, TypeOfAny, TypeType, get_proper_type
 from mypy.types import Type as MypyType
 from mypy.typevars import fill_typevars
 
@@ -103,7 +104,7 @@ class ModelClassInitializer:
         # Not a generated manager
         return None
 
-    def get_or_create_manager_with_any_fallback(self, related_manager: bool = False) -> TypeInfo:
+    def get_or_create_manager_with_any_fallback(self, related_manager: bool = False) -> Optional[TypeInfo]:
         """
         Create a Manager subclass with fallback to Any for unknown attributes
         and methods. This is used for unresolved managers, where we don't know
@@ -121,11 +122,14 @@ class ModelClassInitializer:
             return manager_info
 
         fallback_queryset = self.get_or_create_queryset_with_any_fallback()
+        if fallback_queryset is None:
+            return None
         base_manager_fullname = (
             fullnames.MANAGER_CLASS_FULLNAME if not related_manager else fullnames.RELATED_MANAGER_CLASS
         )
         base_manager_info = self.lookup_typeinfo(base_manager_fullname)
-        assert base_manager_info, f"Type info for {base_manager_fullname} missing"
+        if base_manager_info is None:
+            return None
 
         base_manager = fill_typevars(base_manager_info)
         assert isinstance(base_manager, Instance)
@@ -153,7 +157,7 @@ class ModelClassInitializer:
 
         return manager_info
 
-    def get_or_create_queryset_with_any_fallback(self) -> TypeInfo:
+    def get_or_create_queryset_with_any_fallback(self) -> Optional[TypeInfo]:
         """
         Create a QuerySet subclass with fallback to Any for unknown attributes
         and methods. This is used for the manager returned by the method above.
@@ -168,7 +172,8 @@ class ModelClassInitializer:
             return queryset_info
 
         base_queryset_info = self.lookup_typeinfo(fullnames.QUERYSET_CLASS_FULLNAME)
-        assert base_queryset_info, f"Type info for {fullnames.QUERYSET_CLASS_FULLNAME} missing"
+        if base_queryset_info is None:
+            return None
 
         base_queryset = fill_typevars(base_queryset_info)
         assert isinstance(base_queryset, Instance)
@@ -289,15 +294,6 @@ class AddRelatedModelsId(ModelClassInitializer):
 
 
 class AddManagers(ModelClassInitializer):
-    def has_any_parametrized_manager_as_base(self, info: TypeInfo) -> bool:
-        for base in helpers.iter_bases(info):
-            if self.is_any_parametrized_manager(base):
-                return True
-        return False
-
-    def is_any_parametrized_manager(self, typ: Instance) -> bool:
-        return typ.type.fullname in fullnames.MANAGER_CLASSES and isinstance(typ.args[0], AnyType)
-
     def lookup_manager(self, fullname: str, manager: "Manager[Any]") -> Optional[TypeInfo]:
         manager_info = self.lookup_typeinfo(fullname)
         if manager_info is None:
@@ -355,11 +351,12 @@ class AddManagers(ModelClassInitializer):
                 # ignoring a more specialised manager not being resolved while still
                 # setting _some_ type
                 fallback_manager_info = self.get_or_create_manager_with_any_fallback()
-                self.add_new_node_to_model_class(
-                    manager_name,
-                    Instance(fallback_manager_info, [Instance(self.model_classdef.info, [])]),
-                    is_classvar=True,
-                )
+                if fallback_manager_info is not None:
+                    self.add_new_node_to_model_class(
+                        manager_name,
+                        Instance(fallback_manager_info, [Instance(self.model_classdef.info, [])]),
+                        is_classvar=True,
+                    )
 
                 # Find expression for e.g. `objects = SomeManager()`
                 manager_expr = self.get_manager_expression(manager_name)
@@ -443,7 +440,7 @@ class AddDefaultManagerAttribute(ModelClassInitializer):
         self.add_new_node_to_model_class("_default_manager", default_manager, is_classvar=True)
 
 
-class AddRelatedManagers(ModelClassInitializer):
+class AddReverseLookups(ModelClassInitializer):
     def get_reverse_manager_info(self, model_info: TypeInfo, derived_from: str) -> Optional[TypeInfo]:
         manager_fullname = helpers.get_django_metadata(model_info).get("reverse_managers", {}).get(derived_from)
         if not manager_fullname:
@@ -458,6 +455,9 @@ class AddRelatedManagers(ModelClassInitializer):
         helpers.get_django_metadata(model_info).setdefault("reverse_managers", {})[derived_from] = fullname
 
     def run_with_model_cls(self, model_cls: Type[Model]) -> None:
+        reverse_one_to_one_descriptor = self.lookup_typeinfo_or_incomplete_defn_error(
+            fullnames.REVERSE_ONE_TO_ONE_DESCRIPTOR
+        )
         # add related managers
         for relation in self.django_context.get_model_relations(model_cls):
             attname = relation.get_accessor_name()
@@ -477,7 +477,13 @@ class AddRelatedManagers(ModelClassInitializer):
                     continue
 
             if isinstance(relation, OneToOneRel):
-                self.add_new_node_to_model_class(attname, Instance(related_model_info, []))
+                self.add_new_node_to_model_class(
+                    attname,
+                    Instance(
+                        reverse_one_to_one_descriptor,
+                        [Instance(self.model_classdef.info, []), Instance(related_model_info, [])],
+                    ),
+                )
                 continue
 
             if isinstance(relation, ForeignObjectRel):
@@ -502,9 +508,10 @@ class AddRelatedManagers(ModelClassInitializer):
                     # See https://github.com/typeddjango/django-stubs/pull/993
                     # for more information on when this error can occur.
                     fallback_manager = self.get_or_create_manager_with_any_fallback(related_manager=True)
-                    self.add_new_node_to_model_class(
-                        attname, Instance(fallback_manager, [Instance(related_model_info, [])])
-                    )
+                    if fallback_manager is not None:
+                        self.add_new_node_to_model_class(
+                            attname, Instance(fallback_manager, [Instance(related_model_info, [])])
+                        )
                     related_model_fullname = related_model_cls.__module__ + "." + related_model_cls.__name__
                     # self.ctx.api.fail(
                     #     (
@@ -670,13 +677,7 @@ class MetaclassAdjustments(ModelClassInitializer):
                     and stmt.lvalues[0].name == "abstract"
                 ):
                     # abstract = True (builtins.bool)
-                    rhs_is_true = (
-                        isinstance(stmt.rvalue, NameExpr)
-                        and stmt.rvalue.name == "True"
-                        and isinstance(stmt.rvalue.node, Var)
-                        and isinstance(stmt.rvalue.node.type, Instance)
-                        and stmt.rvalue.node.type.type.fullname == "builtins.bool"
-                    )
+                    rhs_is_true = self.api.parse_bool(stmt.rvalue) is True
                     # abstract: Literal[True]
                     is_literal_true = isinstance(stmt.type, LiteralType) and stmt.type.value is True
                     return rhs_is_true or is_literal_true
@@ -740,7 +741,7 @@ def process_model_class(ctx: ClassDefContext, django_context: DjangoContext) -> 
         AddRelatedModelsId,
         AddManagers,
         AddDefaultManagerAttribute,
-        AddRelatedManagers,
+        AddReverseLookups,
         AddExtraFieldMethods,
         AddMetaOptionsAttribute,
         MetaclassAdjustments,
@@ -762,8 +763,6 @@ def set_auth_user_model_boolean_fields(ctx: AttributeContext, django_context: Dj
 def handle_annotated_type(ctx: AnalyzeTypeContext, django_context: DjangoContext) -> MypyType:
     args = ctx.type.args
     type_arg = ctx.api.analyze_type(args[0])
-    api = cast(SemanticAnalyzer, ctx.api.api)  # type: ignore
-
     if not isinstance(type_arg, Instance) or not type_arg.type.has_base(MODEL_CLASS_FULLNAME):
         return type_arg
 
@@ -779,12 +778,14 @@ def handle_annotated_type(ctx: AnalyzeTypeContext, django_context: DjangoContext
             elif not isinstance(annotations_type_arg, AnyType):
                 ctx.api.fail("Only TypedDicts are supported as type arguments to Annotations", ctx.context)
 
-    return get_or_create_annotated_type(api, type_arg, fields_dict=fields_dict)
+    assert isinstance(ctx.api, TypeAnalyser)
+    assert isinstance(ctx.api.api, SemanticAnalyzer)
+    return get_or_create_annotated_type(ctx.api.api, type_arg, fields_dict=fields_dict)
 
 
 def get_or_create_annotated_type(
     api: Union[SemanticAnalyzer, CheckerPluginInterface], model_type: Instance, fields_dict: Optional[TypedDictType]
-) -> Instance:
+) -> ProperType:
     """
 
     Get or create the type for a model for which you getting/setting any attr is allowed.
@@ -809,7 +810,9 @@ def get_or_create_annotated_type(
         cast(TypeChecker, api), model_module_name + "." + type_name
     )
     if annotated_typeinfo is None:
-        model_module_file = api.modules[model_module_name]  # type: ignore
+        model_module_file = api.modules.get(model_module_name)  # type: ignore[union-attr]
+        if model_module_file is None:
+            return AnyType(TypeOfAny.from_error)
 
         if isinstance(api, SemanticAnalyzer):
             annotated_model_type = api.named_type_or_none(ANY_ATTR_ALLOWED_CLASS_FULLNAME, [])

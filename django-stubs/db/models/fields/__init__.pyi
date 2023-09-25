@@ -190,7 +190,7 @@ class Field(RegisterLookupMixin, Generic[_ST, _GT]):
     # non-Model instances
     @overload
     def __get__(self, instance: Any, owner: Any) -> Self: ...
-    def deconstruct(self) -> Any: ...
+    def deconstruct(self) -> tuple[str, str, Sequence[Any], dict[str, Any]]: ...
     def set_attributes_from_name(self, name: str) -> None: ...
     def db_type_parameters(self, connection: BaseDatabaseWrapper) -> DictWrapper: ...
     def db_check(self, connection: BaseDatabaseWrapper) -> str | None: ...
@@ -420,9 +420,9 @@ class BooleanField(Field[_ST, _GT]):
     _pyi_lookup_exact_type: bool
 
 class NullBooleanField(BooleanField[_ST, _GT]):
-    _pyi_private_set_type: bool | Combinable | None  # type: ignore
-    _pyi_private_get_type: bool | None  # type: ignore
-    _pyi_lookup_exact_type: bool | None  # type: ignore
+    _pyi_private_set_type: bool | Combinable | None  # type: ignore[assignment]
+    _pyi_private_get_type: bool | None  # type: ignore[assignment]
+    _pyi_lookup_exact_type: bool | None  # type: ignore[assignment]
 
 class IPAddressField(Field[_ST, _GT]):
     _pyi_private_set_type: str | Combinable
@@ -603,6 +603,7 @@ class DurationField(Field[_ST, _GT]):
 
 class AutoFieldMixin:
     db_returning: bool
+    def deconstruct(self) -> tuple[str, str, Sequence[Any], dict[str, Any]]: ...
 
 class AutoFieldMeta(type): ...
 
