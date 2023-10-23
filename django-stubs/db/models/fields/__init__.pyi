@@ -45,7 +45,7 @@ class _FieldDescriptor(Protocol[_F]):
     @property
     def field(self) -> _F: ...
 
-_AllLimitChoicesTo: TypeAlias = _LimitChoicesTo | _ChoicesCallable  # noqa: Y047
+_AllLimitChoicesTo: TypeAlias = _LimitChoicesTo | _ChoicesCallable  # noqa: PYI047
 _ErrorMessagesMapping: TypeAlias = Mapping[str, _StrOrPromise]
 _ErrorMessagesDict: TypeAlias = dict[str, _StrOrPromise]
 
@@ -206,9 +206,9 @@ class Field(RegisterLookupMixin, Generic[_ST, _GT]):
     def formfield(
         self,
         form_class: type[forms.Field] | None = ...,
-        choices_form_class: Any | None = ...,
+        choices_form_class: type[forms.ChoiceField] | None = ...,
         **kwargs: Any,
-    ) -> Field: ...
+    ) -> forms.Field: ...
     def save_form_data(self, instance: Model, data: Any) -> None: ...
     def contribute_to_class(self, cls: type[Model], name: str, private_only: bool = ...) -> None: ...
     def to_python(self, value: Any) -> Any: ...

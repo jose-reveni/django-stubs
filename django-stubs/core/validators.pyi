@@ -11,7 +11,7 @@ EMPTY_VALUES: Any
 
 _Regex: TypeAlias = str | Pattern[str]
 
-_ValidatorCallable: TypeAlias = Callable[[Any], None]  # noqa: Y047
+_ValidatorCallable: TypeAlias = Callable[[Any], None]  # noqa: PYI047
 
 class RegexValidator:
     regex: _Regex  # Pattern[str] on instance, but may be str on class definition
@@ -39,6 +39,8 @@ class URLValidator(RegexValidator):
     tld_re: str
     host_re: str
     schemes: Sequence[str]
+    unsafe_chars: frozenset[str]
+    max_length: int
     def __init__(self, schemes: Sequence[str] | None = ..., **kwargs: Any) -> None: ...
     def __call__(self, value: str) -> None: ...
     def deconstruct(obj) -> tuple[str, Sequence[Any], dict[str, Any]]: ...
