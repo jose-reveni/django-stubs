@@ -18,14 +18,13 @@ from django.db.models.fields.reverse_related import ManyToManyRel as ManyToManyR
 from django.db.models.fields.reverse_related import ManyToOneRel as ManyToOneRel
 from django.db.models.fields.reverse_related import OneToOneRel as OneToOneRel
 from django.db.models.query_utils import FilteredRelation, PathInfo, Q
-from django.utils.functional import _StrOrPromise
+from django.utils.functional import _StrOrPromise, cached_property
 from typing_extensions import Self
 
 RECURSIVE_RELATIONSHIP_CONSTANT: Literal["self"]
 
 def resolve_relation(scope_model: type[Model], relation: str | type[Model]) -> str | type[Model]: ...
 
-_M = TypeVar("_M", bound=Model)
 # __set__ value type
 _ST = TypeVar("_ST")
 # __get__ return type
@@ -41,7 +40,37 @@ class RelatedField(FieldCacheMixin, Field[_ST, _GT]):
     remote_field: ForeignObjectRel
     rel_class: type[ForeignObjectRel]
     swappable: bool
-    @property
+    def __init__(
+        self,
+        related_name: str | None = ...,
+        related_query_name: str | None = ...,
+        limit_choices_to: _AllLimitChoicesTo | None = ...,
+        *,
+        verbose_name: _StrOrPromise | None = ...,
+        name: str | None = ...,
+        primary_key: bool = ...,
+        max_length: int | None = ...,
+        unique: bool = ...,
+        blank: bool = ...,
+        null: bool = ...,
+        db_index: bool = ...,
+        rel: ForeignObjectRel | None = ...,
+        default: Any = ...,
+        editable: bool = ...,
+        serialize: bool = ...,
+        unique_for_date: str | None = ...,
+        unique_for_month: str | None = ...,
+        unique_for_year: str | None = ...,
+        choices: _FieldChoices | None = ...,
+        help_text: _StrOrPromise = ...,
+        db_column: str | None = ...,
+        db_tablespace: str | None = ...,
+        auto_created: bool = ...,
+        validators: Iterable[validators._ValidatorCallable] = ...,
+        error_messages: _ErrorMessagesMapping | None = ...,
+        db_comment: str | None = ...,
+    ) -> None: ...
+    @cached_property
     def related_model(self) -> type[Model] | Literal["self"]: ...  # type: ignore[override]
     def get_forward_related_filter(self, obj: Model) -> dict[str, int | UUID]: ...
     def get_reverse_related_filter(self, obj: Model) -> Q: ...
@@ -73,7 +102,6 @@ class ForeignObject(RelatedField[_ST, _GT]):
         parent_link: bool = ...,
         swappable: bool = ...,
         *,
-        db_constraint: bool = ...,
         verbose_name: _StrOrPromise | None = ...,
         name: str | None = ...,
         primary_key: bool = ...,
@@ -88,10 +116,10 @@ class ForeignObject(RelatedField[_ST, _GT]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
-        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesMapping | None = ...,
+        db_comment: str | None = ...,
     ) -> None: ...
     # class access
     @overload
@@ -103,13 +131,13 @@ class ForeignObject(RelatedField[_ST, _GT]):
     @overload
     def __get__(self, instance: Any, owner: Any) -> Self: ...
     def resolve_related_fields(self) -> list[tuple[Field, Field]]: ...
-    @property
+    @cached_property
     def related_fields(self) -> list[tuple[Field, Field]]: ...
-    @property
+    @cached_property
     def reverse_related_fields(self) -> list[tuple[Field, Field]]: ...
-    @property
+    @cached_property
     def local_related_fields(self) -> tuple[Field, ...]: ...
-    @property
+    @cached_property
     def foreign_related_fields(self) -> tuple[Field, ...]: ...
 
 class ForeignKey(ForeignObject[_ST, _GT]):
@@ -147,10 +175,10 @@ class ForeignKey(ForeignObject[_ST, _GT]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
-        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesMapping | None = ...,
+        db_comment: str | None = ...,
     ) -> None: ...
 
 class OneToOneField(ForeignKey[_ST, _GT]):
@@ -188,10 +216,10 @@ class OneToOneField(ForeignKey[_ST, _GT]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
-        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         validators: Iterable[validators._ValidatorCallable] = ...,
         error_messages: _ErrorMessagesMapping | None = ...,
+        db_comment: str | None = ...,
     ) -> None: ...
     # class access
     @overload
@@ -203,9 +231,10 @@ class OneToOneField(ForeignKey[_ST, _GT]):
     @overload
     def __get__(self, instance: Any, owner: Any) -> Self: ...
 
+_Through = TypeVar("_Through", bound=Model)
 _To = TypeVar("_To", bound=Model)
 
-class ManyToManyField(RelatedField[Any, Any], Generic[_To, _M]):
+class ManyToManyField(RelatedField[Any, Any], Generic[_To, _Through]):
     description: str
     has_null_arg: bool
     swappable: bool
@@ -224,7 +253,7 @@ class ManyToManyField(RelatedField[Any, Any], Generic[_To, _M]):
         related_query_name: str | None = ...,
         limit_choices_to: _AllLimitChoicesTo | None = ...,
         symmetrical: bool | None = ...,
-        through: type[_M] | str | None = ...,
+        through: type[_Through] | str | None = ...,
         through_fields: tuple[str, str] | None = ...,
         db_constraint: bool = ...,
         db_table: str | None = ...,
@@ -247,13 +276,13 @@ class ManyToManyField(RelatedField[Any, Any], Generic[_To, _M]):
         choices: _FieldChoices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
-        db_comment: str | None = ...,
         db_tablespace: str | None = ...,
         error_messages: _ErrorMessagesMapping | None = ...,
+        db_comment: str | None = ...,
     ) -> None: ...
     # class access
     @overload
-    def __get__(self, instance: None, owner: Any) -> ManyToManyDescriptor[_M]: ...
+    def __get__(self, instance: None, owner: Any) -> ManyToManyDescriptor[_To, _Through]: ...
     # Model instance access
     @overload
     def __get__(self, instance: Model, owner: Any) -> ManyRelatedManager[_To]: ...
