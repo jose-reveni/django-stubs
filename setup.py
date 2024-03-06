@@ -22,22 +22,21 @@ with open("README.md") as f:
 
 dependencies = [
     "django",
-    "django-stubs-ext>=4.2.7",
+    "django-stubs-ext>=5.0.0.dev1",
     "tomli; python_version < '3.11'",
     # Types:
     "typing-extensions",
-    "types-pytz",
     "types-PyYAML",
 ]
 
 # Keep compatible-mypy major.minor version pinned to what we use in CI (requirements.txt)
 extras_require = {
-    "compatible-mypy": ["mypy~=1.7.0"],
+    "compatible-mypy": ["mypy~=1.8.0"],
 }
 
 setup(
     name="django-stubs",
-    version="4.2.7",
+    version="5.0.0.dev1",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -70,6 +69,7 @@ setup(
         "Framework :: Django :: 3.2",
         "Framework :: Django :: 4.1",
         "Framework :: Django :: 4.2",
+        "Framework :: Django :: 5.0",
     ],
     project_urls={
         "Release notes": "https://github.com/typeddjango/django-stubs/releases",

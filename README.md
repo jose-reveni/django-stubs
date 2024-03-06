@@ -49,6 +49,7 @@ We rely on different `django` and `mypy` versions:
 
 | django-stubs   | Mypy version | Django version | Django partial support | Python version |
 |----------------|--------------|----------------|------------------------|----------------|
+| (next release) | 1.8.x        | 5.0            | 4.2, 4.1               | 3.8 - 3.12     |
 | 4.2.7          | 1.7.x        | 4.2            | 4.1, 3.2               | 3.8 - 3.12     |
 | 4.2.6          | 1.6.x        | 4.2            | 4.1, 3.2               | 3.8 - 3.12     |
 | 4.2.5          | 1.6.x        | 4.2            | 4.1, 3.2               | 3.8 - 3.12     |
@@ -175,54 +176,6 @@ class AuthenticatedHttpRequest(HttpRequest):
 ```
 
 And then use `AuthenticatedHttpRequest` instead of the standard `HttpRequest` for when you know that the user is authenticated. For example in views using the `@login_required` decorator.
-
-### My QuerySet methods are returning Any rather than my Model
-
-If you are using `MyQuerySet.as_manager()`:
-
-Example:
-
-```python
-from django.db import models
-
-class MyModelQuerySet(models.QuerySet):
-    pass
-
-
-class MyModel(models.Model):
-    bar = models.IntegerField()
-    objects = MyModelQuerySet.as_manager()
-
-
-def use_my_model() -> int:
-    foo = MyModel.objects.get(id=1) # Should now be `MyModel`
-    return foo.xyz # Gives an error
-```
-
-Or if you're using `Manager.from_queryset`:
-
-Example:
-
-```python
-from django.db import models
-
-
-class MyModelQuerySet(models.QuerySet):
-    pass
-
-
-MyModelManager = models.Manager.from_queryset(MyModelQuerySet)
-
-
-class MyModel(models.Model):
-    bar = models.IntegerField()
-    objects = MyModelManager()
-
-
-def use_my_model() -> int:
-    foo = MyModel.objects.get(id=1) # Should now be `MyModel`
-    return foo.xyz # Gives an error
-```
 
 ### Why am I getting incompatible return type errors on my custom managers?
 
@@ -352,7 +305,7 @@ So, mypy would not like this code:
 ```python
 from django.conf import settings
 
-settings.CUSTOM_VALUE  # E: 'Settings' object has no attribute 'CUSTOM_SETTING'
+settings.CUSTOM_VALUE  # E: 'Settings' object has no attribute 'CUSTOM_VALUE'
 ```
 
 To handle this corner case we have a special setting `strict_settings` (`True` by default),
@@ -375,7 +328,7 @@ And then:
 
 ```python
 # Works:
-reveal_type(settings.EXISTS_IN_RUNTIME)  # N: Any
+reveal_type(settings.EXISTS_AT_RUNTIME)  # N: Any
 
 # Errors:
 reveal_type(settings.MISSING)  # E: 'Settings' object has no attribute 'MISSING'
