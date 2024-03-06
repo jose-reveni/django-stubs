@@ -368,7 +368,7 @@ class AddManagers(ModelClassInitializer):
                     )
 
                 # Find expression for e.g. `objects = SomeManager()`
-                manager_expr = self.get_manager_expression(manager_name)
+                # manager_expr = self.get_manager_expression(manager_name)
                 manager_fullname = f"{self.model_classdef.fullname}.{manager_name}"
                 # self.api.fail(
                 #     f'Could not resolve manager type for "{manager_fullname}"',
@@ -574,112 +574,8 @@ class AddReverseLookups(ModelClassInitializer):
             except helpers.IncompleteDefnException:
                 processing_incomplete = True
 
-<<<<<<< HEAD
-            if isinstance(relation, OneToOneRel):
-                self.add_new_node_to_model_class(
-                    attname,
-                    Instance(
-                        self.reverse_one_to_one_descriptor,
-                        [Instance(self.model_classdef.info, []), Instance(related_model_info, [])],
-                    ),
-                )
-                continue
-
-            elif isinstance(relation, ManyToManyRel):
-                # TODO: 'relation' should be based on `TypeInfo` instead of Django runtime.
-                to_fullname = helpers.get_class_fullname(relation.remote_field.model)
-                to_model_info = self.lookup_typeinfo_or_incomplete_defn_error(to_fullname)
-                assert relation.through is not None
-                through_fullname = helpers.get_class_fullname(relation.through)
-                through_model_info = self.lookup_typeinfo_or_incomplete_defn_error(through_fullname)
-                self.add_new_node_to_model_class(
-                    attname,
-                    Instance(
-                        self.many_to_many_descriptor, [Instance(to_model_info, []), Instance(through_model_info, [])]
-                    ),
-                )
-
-            else:
-                related_manager_info = None
-                try:
-                    related_manager_info = self.lookup_typeinfo_or_incomplete_defn_error(
-                        fullnames.RELATED_MANAGER_CLASS
-                    )
-                    default_manager = related_model_info.names.get("_default_manager")
-                    if not default_manager:
-                        raise helpers.IncompleteDefnException()
-                except helpers.IncompleteDefnException as exc:
-                    if not self.api.final_iteration:
-                        raise exc
-
-                    # If a django model has a Manager class that cannot be
-                    # resolved statically (if it is generated in a way where we
-                    # cannot import it, like `objects = my_manager_factory()`),
-                    # we fallback to the default related manager, so you at
-                    # least get a base level of working type checking.
-                    #
-                    # See https://github.com/typeddjango/django-stubs/pull/993
-                    # for more information on when this error can occur.
-                    fallback_manager = self.get_or_create_manager_with_any_fallback(related_manager=True)
-                    if fallback_manager is not None:
-                        self.add_new_node_to_model_class(
-                            attname, Instance(fallback_manager, [Instance(related_model_info, [])])
-                        )
-                    related_model_fullname = related_model_cls.__module__ + "." + related_model_cls.__name__
-                    # self.ctx.api.fail(
-                    #     (
-                    #         "Couldn't resolve related manager for relation "
-                    #         f"{relation.name!r} (from {related_model_fullname}."
-                    #         f"{relation.field})."
-                    #     ),
-                    #     self.ctx.cls,
-                    #     code=MANAGER_MISSING,
-                    # )
-
-                    continue
-
-                # Check if the related model has a related manager subclassed from the default manager
-                # TODO: Support other reverse managers than `_default_manager`
-                default_reverse_manager_info = helpers.get_reverse_manager_info(
-                    self.api, model_info=related_model_info, derived_from="_default_manager"
-                )
-                if default_reverse_manager_info:
-                    self.add_new_node_to_model_class(attname, Instance(default_reverse_manager_info, []))
-                    continue
-
-                # The reverse manager we're looking for doesn't exist. So we
-                # create it. The (default) reverse manager type is built from a
-                # RelatedManager and the default manager on the related model
-                parametrized_related_manager_type = Instance(related_manager_info, [Instance(related_model_info, [])])
-                default_manager_type = default_manager.type
-                assert default_manager_type is not None
-                assert isinstance(default_manager_type, Instance)
-                # When the default manager isn't custom there's no need to create a new type
-                # as `RelatedManager` has `models.Manager` as base
-                if default_manager_type.type.fullname == fullnames.MANAGER_CLASS_FULLNAME:
-                    self.add_new_node_to_model_class(attname, parametrized_related_manager_type)
-                    continue
-
-                # The reverse manager is based on the related model's manager, so it makes most sense to add the new
-                # related manager in that module
-                new_related_manager_info = helpers.add_new_class_for_module(
-                    module=self.api.modules[related_model_info.module_name],
-                    name=f"{related_model_cls.__name__}_RelatedManager",
-                    bases=[parametrized_related_manager_type, default_manager_type],
-                )
-                new_related_manager_info.metadata["django"] = {"related_manager_to_model": related_model_info.fullname}
-                # Stash the new reverse manager type fullname on the related model, so we don't duplicate
-                # or have to create it again for other reverse relations
-                helpers.set_reverse_manager_info(
-                    related_model_info,
-                    derived_from="_default_manager",
-                    fullname=new_related_manager_info.fullname,
-                )
-                self.add_new_node_to_model_class(attname, Instance(new_related_manager_info, []))
-=======
         if processing_incomplete and not self.api.final_iteration:
             raise helpers.IncompleteDefnException
->>>>>>> upstream/master
 
 
 class AddExtraFieldMethods(ModelClassInitializer):
