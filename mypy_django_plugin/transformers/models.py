@@ -31,7 +31,6 @@ from mypy.types import Type as MypyType
 from mypy.typevars import fill_typevars
 
 from mypy_django_plugin.django.context import DjangoContext
-from mypy_django_plugin.errorcodes import MANAGER_MISSING
 from mypy_django_plugin.exceptions import UnregisteredModelError
 from mypy_django_plugin.lib import fullnames, helpers
 from mypy_django_plugin.lib.fullnames import ANNOTATIONS_FULLNAME, ANY_ATTR_ALLOWED_CLASS_FULLNAME, MODEL_CLASS_FULLNAME
@@ -514,16 +513,16 @@ class AddReverseLookups(ModelClassInitializer):
                 self.add_new_node_to_model_class(
                     attname, Instance(fallback_manager, [Instance(related_model_info, [])])
                 )
-            related_model_fullname = related_model_cls.__module__ + "." + related_model_cls.__name__
-            self.ctx.api.fail(
-                (
-                    "Couldn't resolve related manager for relation "
-                    f"{relation.name!r} (from {related_model_fullname}."
-                    f"{relation.field})."
-                ),
-                self.ctx.cls,
-                code=MANAGER_MISSING,
-            )
+            # related_model_fullname = related_model_cls.__module__ + "." + related_model_cls.__name__
+            # self.ctx.api.fail(
+            #     (
+            #         "Couldn't resolve related manager for relation "
+            #         f"{relation.name!r} (from {related_model_fullname}."
+            #         f"{relation.field})."
+            #     ),
+            #     self.ctx.cls,
+            #     code=MANAGER_MISSING,
+            # )
             return
 
         # Check if the related model has a related manager subclassed from the default manager
