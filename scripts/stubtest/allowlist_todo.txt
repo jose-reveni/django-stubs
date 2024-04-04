@@ -10,17 +10,11 @@ django.conf.STATICFILES_STORAGE_DEPRECATED_MSG
 django.conf.global_settings.gettext_noop
 django.conf.urls.IncludedURLConf
 django.conf.urls.url
-django.contrib.admin.AllValuesFieldListFilter.title
-django.contrib.admin.ChoicesFieldListFilter.title
-django.contrib.admin.FieldListFilter.list_separator
 django.contrib.admin.FieldListFilter.title
 django.contrib.admin.ModelAdmin
 django.contrib.admin.ModelAdmin.log_addition
 django.contrib.admin.ModelAdmin.log_change
 django.contrib.admin.ModelAdmin.log_deletion
-django.contrib.admin.RelatedFieldListFilter.field_admin_ordering
-django.contrib.admin.RelatedFieldListFilter.title
-django.contrib.admin.RelatedOnlyFieldListFilter.title
 django.contrib.admin.StackedInline
 django.contrib.admin.TabularInline
 django.contrib.admin.action
@@ -28,13 +22,7 @@ django.contrib.admin.apps.AdminConfig.default
 django.contrib.admin.decorators.action
 django.contrib.admin.decorators.display
 django.contrib.admin.display
-django.contrib.admin.filters.AllValuesFieldListFilter.title
-django.contrib.admin.filters.ChoicesFieldListFilter.title
-django.contrib.admin.filters.FieldListFilter.list_separator
 django.contrib.admin.filters.FieldListFilter.title
-django.contrib.admin.filters.RelatedFieldListFilter.field_admin_ordering
-django.contrib.admin.filters.RelatedFieldListFilter.title
-django.contrib.admin.filters.RelatedOnlyFieldListFilter.title
 django.contrib.admin.forms.AdminAuthenticationForm
 django.contrib.admin.forms.AdminPasswordChangeForm
 django.contrib.admin.helpers.ActionForm
@@ -100,7 +88,6 @@ django.contrib.auth.admin.UserAdmin.form
 django.contrib.auth.admin.UserAdmin.get_form
 django.contrib.auth.backends.RemoteUserBackend.authenticate
 django.contrib.auth.backends.RemoteUserBackend.configure_user
-django.contrib.auth.base_user.AbstractBaseUser.Meta.abstract
 django.contrib.auth.base_user.AbstractBaseUser.get_session_auth_fallback_hash
 django.contrib.auth.base_user.AbstractBaseUser.last_login
 django.contrib.auth.base_user.AbstractBaseUser.password
@@ -108,14 +95,10 @@ django.contrib.auth.decorators.login_required
 django.contrib.auth.default_app_config
 django.contrib.auth.forms.AdminPasswordChangeForm
 django.contrib.auth.forms.AuthenticationForm
-django.contrib.auth.forms.BaseUserCreationForm.Meta.field_classes
-django.contrib.auth.forms.BaseUserCreationForm.Meta.model
 django.contrib.auth.forms.BaseUserCreationForm.declared_fields
 django.contrib.auth.forms.PasswordChangeForm
 django.contrib.auth.forms.PasswordResetForm
 django.contrib.auth.forms.SetPasswordForm
-django.contrib.auth.forms.UserChangeForm.Meta.field_classes
-django.contrib.auth.forms.UserChangeForm.Meta.model
 django.contrib.auth.forms.UserChangeForm.declared_fields
 django.contrib.auth.forms.UserCreationForm.declared_fields
 django.contrib.auth.forms.UserModel
@@ -129,13 +112,9 @@ django.contrib.auth.hashers.reset_hashers
 django.contrib.auth.management.commands.createsuperuser.Command.get_input_data
 django.contrib.auth.management.commands.createsuperuser.Command.username_is_unique
 django.contrib.auth.management.commands.createsuperuser.PASSWORD_FIELD
-django.contrib.auth.models.AbstractBaseUser.Meta.abstract
 django.contrib.auth.models.AbstractBaseUser.get_session_auth_fallback_hash
 django.contrib.auth.models.AbstractBaseUser.last_login
 django.contrib.auth.models.AbstractBaseUser.password
-django.contrib.auth.models.AbstractUser.Meta.abstract
-django.contrib.auth.models.AbstractUser.Meta.verbose_name
-django.contrib.auth.models.AbstractUser.Meta.verbose_name_plural
 django.contrib.auth.models.AbstractUser.date_joined
 django.contrib.auth.models.AbstractUser.email
 django.contrib.auth.models.AbstractUser.email_user
@@ -163,7 +142,6 @@ django.contrib.auth.models.Permission.content_type_id
 django.contrib.auth.models.Permission.id
 django.contrib.auth.models.Permission.name
 django.contrib.auth.models.PermissionManager.__slotnames__
-django.contrib.auth.models.PermissionsMixin.Meta.abstract
 django.contrib.auth.models.PermissionsMixin.groups
 django.contrib.auth.models.PermissionsMixin.is_superuser
 django.contrib.auth.models.PermissionsMixin.user_permissions
@@ -214,7 +192,6 @@ django.contrib.contenttypes.models.ContentType.permission_set
 django.contrib.contenttypes.models.ContentTypeManager.__init__
 django.contrib.contenttypes.models.ContentTypeManager.__slotnames__
 django.contrib.flatpages.admin.FlatPageAdmin
-django.contrib.flatpages.forms.FlatpageForm.Meta.model
 django.contrib.flatpages.forms.FlatpageForm.declared_fields
 django.contrib.flatpages.models.FlatPage.content
 django.contrib.flatpages.models.FlatPage.enable_comments
@@ -253,14 +230,10 @@ django.contrib.gis.db.backends.oracle.features.DatabaseFeatures.django_test_skip
 django.contrib.gis.db.backends.oracle.features.DatabaseFeatures.supports_tolerance_parameter
 django.contrib.gis.db.backends.oracle.features.DatabaseFeatures.unsupported_geojson_options
 django.contrib.gis.db.backends.oracle.introspection
-django.contrib.gis.db.backends.oracle.models.OracleGeometryColumns.Meta
-django.contrib.gis.db.backends.oracle.models.OracleSpatialRefSys.Meta
 django.contrib.gis.db.backends.oracle.operations
 django.contrib.gis.db.backends.postgis.adapter.PostGISAdapter.prepare
 django.contrib.gis.db.backends.postgis.features.DatabaseFeatures.empty_intersection_returns_none
 django.contrib.gis.db.backends.postgis.features.DatabaseFeatures.supports_geography
-django.contrib.gis.db.backends.postgis.models.PostGISGeometryColumns.Meta
-django.contrib.gis.db.backends.postgis.models.PostGISSpatialRefSys.Meta
 django.contrib.gis.db.backends.postgis.operations.PostGISOperations.convert_extent
 django.contrib.gis.db.backends.postgis.operations.PostGISOperations.convert_extent3d
 django.contrib.gis.db.backends.postgis.operations.PostGISOperator.check_geography
@@ -268,8 +241,6 @@ django.contrib.gis.db.backends.postgis.schema.PostGISSchemaEditor.rast_index_tem
 django.contrib.gis.db.backends.spatialite.base.DatabaseWrapper.ops
 django.contrib.gis.db.backends.spatialite.features.DatabaseFeatures.can_alter_geometry_field
 django.contrib.gis.db.backends.spatialite.features.DatabaseFeatures.django_test_skips
-django.contrib.gis.db.backends.spatialite.models.SpatialiteGeometryColumns.Meta
-django.contrib.gis.db.backends.spatialite.models.SpatialiteSpatialRefSys.Meta
 django.contrib.gis.db.backends.spatialite.operations.SpatiaLiteOperations.convert_extent
 django.contrib.gis.db.backends.spatialite.operations.SpatiaLiteOperations.from_text
 django.contrib.gis.db.backends.spatialite.operations.SpatiaLiteOperations.geom_lib_version
@@ -403,7 +374,6 @@ django.contrib.gis.db.models.ManyToManyField.reverse_path_infos
 django.contrib.gis.db.models.ManyToManyRel.identity
 django.contrib.gis.db.models.ManyToOneRel.__init__
 django.contrib.gis.db.models.ManyToOneRel.identity
-django.contrib.gis.db.models.Model.Meta
 django.contrib.gis.db.models.Model.add_to_class
 django.contrib.gis.db.models.ObjectDoesNotExist
 django.contrib.gis.db.models.OneToOneField.__get__
@@ -420,11 +390,7 @@ django.contrib.gis.db.models.PositiveIntegerField.integer_field_class
 django.contrib.gis.db.models.PositiveSmallIntegerField.formfield
 django.contrib.gis.db.models.PositiveSmallIntegerField.integer_field_class
 django.contrib.gis.db.models.Q.XOR
-django.contrib.gis.db.models.Q.__init__
-django.contrib.gis.db.models.Q.check
-django.contrib.gis.db.models.Q.flatten
 django.contrib.gis.db.models.Q.resolve_expression
-django.contrib.gis.db.models.QuerySet.__contains__
 django.contrib.gis.db.models.QuerySet.__deepcopy__
 django.contrib.gis.db.models.QuerySet.__reversed__
 django.contrib.gis.db.models.QuerySet.__xor__
@@ -465,7 +431,6 @@ django.contrib.gis.db.models.functions.Length.as_sql
 django.contrib.gis.db.models.lookups.RasterBandTransform.as_sql
 django.contrib.gis.default_app_config
 django.contrib.gis.forms.ALL_FIELDS
-django.contrib.gis.forms.BaseForm.Meta
 django.contrib.gis.forms.BaseForm.__init__
 django.contrib.gis.forms.BaseFormSet.__init__
 django.contrib.gis.forms.BaseFormSet.deletion_widget
@@ -647,9 +612,6 @@ django.contrib.sessions.backends.base.SessionBase.get
 django.contrib.sessions.backends.base.SessionBase.setdefault
 django.contrib.sessions.backends.base.SessionBase.update
 django.contrib.sessions.backends.signed_cookies.SessionStore.exists
-django.contrib.sessions.base_session.AbstractBaseSession.Meta.abstract
-django.contrib.sessions.base_session.AbstractBaseSession.Meta.verbose_name
-django.contrib.sessions.base_session.AbstractBaseSession.Meta.verbose_name_plural
 django.contrib.sessions.base_session.AbstractBaseSession.expire_date
 django.contrib.sessions.base_session.AbstractBaseSession.get_next_by_expire_date
 django.contrib.sessions.base_session.AbstractBaseSession.get_previous_by_expire_date
@@ -681,7 +643,6 @@ django.core.checks.registry.CheckRegistry.register
 django.core.files.locks.OVERLAPPED
 django.core.files.locks.PVOID
 django.core.files.locks.ULONG_PTR
-django.core.files.uploadedfile.InMemoryUploadedFile.__init__
 django.core.files.uploadedfile.UploadedFile.size
 django.core.files.utils.FileProxyMixin.encoding
 django.core.files.utils.FileProxyMixin.fileno
@@ -953,7 +914,6 @@ django.db.models.ManyToManyField.reverse_path_infos
 django.db.models.ManyToManyRel.identity
 django.db.models.ManyToOneRel.__init__
 django.db.models.ManyToOneRel.identity
-django.db.models.Model.Meta
 django.db.models.Model.add_to_class
 django.db.models.ObjectDoesNotExist
 django.db.models.OneToOneField.__get__
@@ -970,11 +930,7 @@ django.db.models.PositiveIntegerField.integer_field_class
 django.db.models.PositiveSmallIntegerField.formfield
 django.db.models.PositiveSmallIntegerField.integer_field_class
 django.db.models.Q.XOR
-django.db.models.Q.__init__
-django.db.models.Q.check
-django.db.models.Q.flatten
 django.db.models.Q.resolve_expression
-django.db.models.QuerySet.__contains__
 django.db.models.QuerySet.__deepcopy__
 django.db.models.QuerySet.__reversed__
 django.db.models.QuerySet.__xor__
@@ -1009,7 +965,6 @@ django.db.models.aggregates.StdDev.__init__
 django.db.models.aggregates.Variance.__init__
 django.db.models.base.DEFERRED
 django.db.models.base.Deferred
-django.db.models.base.Model.Meta
 django.db.models.base.Model.add_to_class
 django.db.models.base.ModelBase.__new__
 django.db.models.base.ModelBase.add_to_class
@@ -1351,7 +1306,6 @@ django.db.models.options.Options.local_concrete_fields
 django.db.models.options.Options.many_to_many
 django.db.models.options.Options.related_objects
 django.db.models.query.EmptyQuerySet.__init__
-django.db.models.query.QuerySet.__contains__
 django.db.models.query.QuerySet.__deepcopy__
 django.db.models.query.QuerySet.__reversed__
 django.db.models.query.QuerySet.__xor__
@@ -1364,9 +1318,6 @@ django.db.models.query.prefetch_one_level
 django.db.models.query_utils.DeferredAttribute.__get__
 django.db.models.query_utils.InvalidQuery
 django.db.models.query_utils.Q.XOR
-django.db.models.query_utils.Q.__init__
-django.db.models.query_utils.Q.check
-django.db.models.query_utils.Q.flatten
 django.db.models.query_utils.Q.resolve_expression
 django.db.models.query_utils.RegisterLookupMixin._unregister_lookup
 django.db.models.query_utils.RegisterLookupMixin.get_class_lookups
@@ -1472,7 +1423,6 @@ django.db.utils.ConnectionHandler.ensure_defaults
 django.db.utils.ConnectionHandler.prepare_test_settings
 django.db.utils.DatabaseErrorWrapper.__call__
 django.forms.ALL_FIELDS
-django.forms.BaseForm.Meta
 django.forms.BaseForm.__init__
 django.forms.BaseFormSet.__init__
 django.forms.BaseFormSet.deletion_widget
@@ -1523,7 +1473,6 @@ django.forms.fields.FileField.bound_data
 django.forms.fields.MultiValueField.__deepcopy__
 django.forms.fields.MultipleChoiceField.hidden_widget
 django.forms.fields.SplitDateTimeField.hidden_widget
-django.forms.forms.BaseForm.Meta
 django.forms.forms.BaseForm.__init__
 django.forms.forms.DeclarativeFieldsMetaclass.__new__
 django.forms.forms.Form
@@ -1673,3 +1622,9 @@ django.urls.path
 django.urls.re_path
 django.urls.resolvers.LocaleRegexDescriptor.__get__
 django.urls.resolvers.ResolverMatch.__iter__
+
+# mypy 1.9.0 new issues:
+django.db.models.expressions.rhs
+django.db.models.expressions.result
+django.db.models.expressions.lhs
+django.db.backends.postgresql.base.Cursor
