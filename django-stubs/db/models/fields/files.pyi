@@ -7,13 +7,15 @@ from django.core.files.images import ImageFile
 from django.core.files.storage import Storage
 from django.db.models.base import Model
 from django.db.models.expressions import Expression
-from django.db.models.fields import NOT_PROVIDED, Field, _ErrorMessagesMapping, _FieldChoices
+from django.db.models.fields import NOT_PROVIDED, Field, _ErrorMessagesMapping
 from django.db.models.query_utils import DeferredAttribute
+from django.db.models.utils import AltersData
 from django.utils._os import _PathCompatible
+from django.utils.choices import _Choices
 from django.utils.functional import _StrOrPromise
 from typing_extensions import Self
 
-class FieldFile(File):
+class FieldFile(File, AltersData):
     instance: Model
     field: FileField
     storage: Storage
@@ -31,6 +33,10 @@ class FieldFile(File):
     def delete(self, save: bool = ...) -> None: ...
     @property
     def closed(self) -> bool: ...
+    def __getstate__(self) -> dict[str, Any]: ...
+    def __setstate__(self, state: dict[str, Any]) -> None: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 class FileDescriptor(DeferredAttribute):
     field: FileField
@@ -66,7 +72,7 @@ class FileField(Field):
         unique_for_date: str | None = ...,
         unique_for_month: str | None = ...,
         unique_for_year: str | None = ...,
-        choices: _FieldChoices | None = ...,
+        choices: _Choices | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
