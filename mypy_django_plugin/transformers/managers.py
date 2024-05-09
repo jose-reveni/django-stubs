@@ -147,7 +147,7 @@ def _process_dynamic_method(
         ):
             ret_type = _replace_type_var(ret_type, base_that_has_method.defn.type_vars[0].fullname, typed_var[0])
             args_types = [
-                _replace_type_var(arg_type, base_that_has_method.defn.type_vars[0].fullname, manager_instance.args[0])
+                _replace_type_var(arg_type, base_that_has_method.defn.type_vars[0].fullname, typed_var[0])
                 for arg_type in args_types
             ]
     if base_that_has_method.self_type:
@@ -217,7 +217,7 @@ def _has_compatible_type_vars(type_info: TypeInfo) -> bool:
         return False
 
     if type_info.has_base(fullnames.QUERYSET_CLASS_FULLNAME):
-        # If it is a subclass of _QuerySet, it is compatible.
+        # If it is a subclass of QuerySet, it is compatible.
         return True
     # check that at least one base is a subclass of queryset with Generic type vars
     return any(_has_compatible_type_vars(sub_base.type) for sub_base in type_info.bases)
