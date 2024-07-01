@@ -3,7 +3,7 @@ import sys
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
-from mypy.build import PRI_MYPY
+from mypy.build import PRI_MED, PRI_MYPY
 from mypy.modulefinder import mypy_path
 from mypy.nodes import MypyFile, TypeInfo
 from mypy.options import Options
@@ -24,7 +24,17 @@ from mypy_django_plugin.config import DjangoPluginConfig
 from mypy_django_plugin.django.context import DjangoContext
 from mypy_django_plugin.exceptions import UnregisteredModelError
 from mypy_django_plugin.lib import fullnames, helpers
-from mypy_django_plugin.transformers import fields, forms, init_create, manytomany, meta, querysets, request, settings
+from mypy_django_plugin.transformers import (
+    fields,
+    forms,
+    init_create,
+    manytomany,
+    manytoone,
+    meta,
+    querysets,
+    request,
+    settings,
+)
 from mypy_django_plugin.transformers.functional import resolve_str_promise_attribute
 from mypy_django_plugin.transformers.managers import (
     create_new_manager_class_from_as_manager_method,
@@ -99,14 +109,14 @@ class NewSemanalDjangoPlugin(Plugin):
             return sym.node
         return None
 
-    def _new_dependency(self, module: str) -> Tuple[int, str, int]:
+    def _new_dependency(self, module: str, priority: int = PRI_MYPY) -> Tuple[int, str, int]:
         fake_lineno = -1
-        return (PRI_MYPY, module, fake_lineno)
+        return (priority, module, fake_lineno)
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         # for settings
         if file.fullname == "django.conf" and self.django_context.django_settings_module:
-            return [self._new_dependency(self.django_context.django_settings_module)]
+            return [self._new_dependency(self.django_context.django_settings_module, PRI_MED)]
 
         # for values / values_list
         if file.fullname == "django.db.models":
@@ -190,11 +200,13 @@ class NewSemanalDjangoPlugin(Plugin):
             if info and info.has_base(fullnames.FORM_MIXIN_CLASS_FULLNAME):
                 return forms.extract_proper_type_for_get_form
 
-        elif method_name == "__get__" and class_fullname in {
-            fullnames.MANYTOMANY_FIELD_FULLNAME,
-            fullnames.MANY_TO_MANY_DESCRIPTOR,
-        }:
-            return manytomany.refine_many_to_many_related_manager
+        elif method_name == "__get__":
+            hooks = {
+                fullnames.MANYTOMANY_FIELD_FULLNAME: manytomany.refine_many_to_many_related_manager,
+                fullnames.MANY_TO_MANY_DESCRIPTOR: manytomany.refine_many_to_many_related_manager,
+                fullnames.REVERSE_MANY_TO_ONE_DESCRIPTOR: manytoone.refine_many_to_one_related_manager,
+            }
+            return hooks.get(class_fullname)
 
         manager_classes = self._get_current_manager_bases()
 

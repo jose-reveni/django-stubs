@@ -27,6 +27,13 @@ django.core.files.storage.default_storage
 django.contrib.admin.models.LogEntry_RelatedManager
 django.contrib.auth.models.Permission_RelatedManager
 
+# '<Model>_ManyRelatedManager' entries are plugin generated and these subclasses only exist
+# _locally/dynamically_ runtime -- Created via
+# 'django.db.models.fields.related_descriptors.create_forward_many_to_many_manager'
+django.contrib.auth.models.Group_ManyRelatedManager
+django.contrib.auth.models.Permission_ManyRelatedManager
+django.contrib.auth.models.User_ManyRelatedManager
+
 # BaseArchive abstract methods that take no argument, but typed with arguments to match the Archive and TarArchive Implementations
 django.utils.archive.BaseArchive.list
 django.utils.archive.BaseArchive.extract
@@ -107,6 +114,7 @@ django.utils.translation.template.constant_re
 django.utils.translation.template.block_re
 django.utils.version.version_component_re
 django.views.debug.SafeExceptionReporterFilter.hidden_settings
+django.http.multipartparser.MultiPartParser.boundary_re
 
 # AlterTogetherOptionOperation.option_name is set as None,
 # but is required in the init, so we type it as str
@@ -411,3 +419,31 @@ django.contrib.sessions.base_session.AbstractBaseSession.Meta
 # Custom __str__ that we don't want to overcomplicate:
 django.forms.utils.RenderableMixin.__str__
 django.forms.utils.RenderableMixin.__html__
+
+# Dynamically added in ManyToManyField.contribute_to_class()
+django.db.models.ManyToManyField.m2m_db_table
+django.db.models.fields.related.ManyToManyField.m2m_db_table
+django.contrib.gis.db.models.ManyToManyField.m2m_db_table
+
+# Dynamically added in ManyToManyField.contribute_to_related_class()
+django.db.models.ManyToManyField.m2m_column_name
+django.db.models.ManyToManyField.m2m_field_name
+django.db.models.ManyToManyField.m2m_reverse_field_name
+django.db.models.ManyToManyField.m2m_reverse_name
+django.db.models.ManyToManyField.m2m_reverse_target_field_name
+django.db.models.ManyToManyField.m2m_target_field_name
+django.db.models.fields.related.ManyToManyField.m2m_column_name
+django.db.models.fields.related.ManyToManyField.m2m_field_name
+django.db.models.fields.related.ManyToManyField.m2m_reverse_field_name
+django.db.models.fields.related.ManyToManyField.m2m_reverse_name
+django.db.models.fields.related.ManyToManyField.m2m_reverse_target_field_name
+django.db.models.fields.related.ManyToManyField.m2m_target_field_name
+django.contrib.gis.db.models.ManyToManyField.m2m_column_name
+django.contrib.gis.db.models.ManyToManyField.m2m_field_name
+django.contrib.gis.db.models.ManyToManyField.m2m_reverse_field_name
+django.contrib.gis.db.models.ManyToManyField.m2m_reverse_name
+django.contrib.gis.db.models.ManyToManyField.m2m_reverse_target_field_name
+django.contrib.gis.db.models.ManyToManyField.m2m_target_field_name
+
+# Defined inside a signature (using the walrus operator)
+django.core.management.utils.sentinel

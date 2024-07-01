@@ -1,17 +1,27 @@
 import enum
 import sys
-from typing import Any, TypeVar, type_check_only
+from typing import Any, TypeVar, overload, type_check_only
 
-from typing_extensions import Self, TypeAlias
+from _typeshed import ConvertibleToInt
+from django.utils.functional import _StrOrPromise
+from typing_extensions import TypeAlias
 
 _Self = TypeVar("_Self")
 
 if sys.version_info >= (3, 11):
     _enum_property = enum.property
+    EnumType = enum.EnumType
+    IntEnum = enum.IntEnum
+    StrEnum = enum.StrEnum
 else:
     _enum_property = property
+    EnumType = enum.EnumMeta
 
-class ChoicesMeta(enum.EnumMeta):
+    class ReprEnum(enum.Enum): ...
+    class IntEnum(int, ReprEnum): ...
+    class StrEnum(str, ReprEnum): ...
+
+class ChoicesMeta(EnumType):
     # There's a contradiction between mypy and PYI019 regarding metaclasses. Where mypy
     # disallows 'typing_extensions.Self' on metaclasses, while PYI019 try to enforce
     # 'typing_extensions.Self' for '__new__' methods.. We've chosen to ignore the
@@ -31,7 +41,7 @@ class ChoicesMeta(enum.EnumMeta):
 
 ChoicesType: TypeAlias = ChoicesMeta
 
-class Choices(enum.Enum, metaclass=ChoicesMeta):
+class Choices(enum.Enum, metaclass=ChoicesType):
     @property
     def label(self) -> str: ...
     @_enum_property
@@ -41,26 +51,35 @@ class Choices(enum.Enum, metaclass=ChoicesMeta):
 
 # fake, to keep simulate class properties
 @type_check_only
-class _IntegerChoicesMeta(ChoicesMeta):
+class _IntegerChoicesMeta(ChoicesType):
     @property
     def choices(self) -> list[tuple[int, str]]: ...
     @property
     def values(self) -> list[int]: ...
 
-class IntegerChoices(int, Choices, metaclass=_IntegerChoicesMeta):
-    def __new__(cls, value: int) -> Self: ...
+# In reality, the `__init__` overloads provided below should also support
+# all the arguments of `int.__new__`/`str.__new__` (e.g. `base`, `encoding`).
+# They are omitted on purpose to avoid having convoluted stubs for these enums:
+class IntegerChoices(Choices, IntEnum, metaclass=_IntegerChoicesMeta):
+    @overload
+    def __init__(self, x: ConvertibleToInt) -> None: ...
+    @overload
+    def __init__(self, x: ConvertibleToInt, label: _StrOrPromise) -> None: ...
     @_enum_property
     def value(self) -> int: ...
 
 # fake, to keep simulate class properties
 @type_check_only
-class _TextChoicesMeta(ChoicesMeta):
+class _TextChoicesMeta(ChoicesType):
     @property
     def choices(self) -> list[tuple[str, str]]: ...
     @property
     def values(self) -> list[str]: ...
 
-class TextChoices(str, Choices, metaclass=_TextChoicesMeta):
-    def __new__(cls, value: str) -> Self: ...
+class TextChoices(Choices, StrEnum, metaclass=_TextChoicesMeta):
+    @overload
+    def __init__(self, object: str) -> None: ...
+    @overload
+    def __init__(self, object: str, label: _StrOrPromise) -> None: ...
     @_enum_property
     def value(self) -> str: ...

@@ -43,6 +43,31 @@
                 class MyModelWithoutSelf(models.Model):
                     objects = ManagerWithoutSelf()
 
+-   case: from_queryset_model_inheritance
+    main: |
+        from myapp.models import Base, Sub
+        reveal_type(Base.objects)  # N: Revealed type is "myapp.models.MyManager[myapp.models.Base]"
+        reveal_type(Sub.objects)  # N: Revealed type is "myapp.models.MyManager[myapp.models.Sub]"
+    installed_apps:
+        - myapp
+    files:
+        -   path: myapp/__init__.py
+        -   path: myapp/models.py
+            content: |
+                from typing import ClassVar
+                from typing_extensions import Self
+                from django.db.models import Model
+                from django.db.models.manager import BaseManager
+                from django.db.models.query import QuerySet
+
+                MyManager = BaseManager.from_queryset(QuerySet, "MyManager")
+
+                class Base(Model):
+                    objects: ClassVar[MyManager[Self]] = MyManager()
+
+                class Sub(Base):
+                    pass
+
 -   case: from_queryset_with_base_manager
     main: |
         from myapp.models import MyModel
@@ -790,6 +815,37 @@
                   ...
 
               StrCallable = BaseManager.from_queryset(ModelQuerySet, class_name=str(1))
+
+-   case: queryset_inheritable_does_not_clobber_super_init
+    main: |
+        from myapp.models import BaseManager
+
+        reveal_type(BaseManager().ttl)  # N: Revealed type is "builtins.int"
+    installed_apps:
+        - myapp
+    files:
+        - path: myapp/__init__.py
+        - path: myapp/models.py
+          content: |
+            from typing import Any, TYPE_CHECKING
+            from django.db import models
+            from django.db.models.manager import Manager
+            from django.db.models.query import QuerySet
+
+            if TYPE_CHECKING:
+                from django.db.models.manager import _T
+                from django.db.models.query import _Model, _Row
+
+            class MyQuerySet(QuerySet["_Model", "_Row"]):
+                def __init__(self, *a: Any, **k: Any) -> None:
+                    super().__init__(*a, **k)
+
+            _base = Manager.from_queryset(MyQuerySet)
+
+            class BaseManager(_base["_T"]):
+                def __init__(self, *a: Any, ttl: int = 0, **k: Any) -> None:
+                    self.ttl = ttl
+                    super().__init__(*a, **k)
 
 -   case: test_queryset_arg_as_unsupported_expressions
     main: |

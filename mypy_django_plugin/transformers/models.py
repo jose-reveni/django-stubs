@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterable, List, Optional, Type, Union, cast
 from django.db.models import Manager, Model
 from django.db.models.fields import DateField, DateTimeField, Field
 from django.db.models.fields.reverse_related import ForeignObjectRel, ManyToManyRel, OneToOneRel
+from errorcodes import MANAGER_MISSING
 from mypy.checker import TypeChecker
 from mypy.nodes import (
     ARG_STAR2,
@@ -14,6 +15,7 @@ from mypy.nodes import (
     CallExpr,
     Context,
     Expression,
+    FakeInfo,
     NameExpr,
     RefExpr,
     Statement,
@@ -26,7 +28,7 @@ from mypy.plugin import AnalyzeTypeContext, AttributeContext, CheckerPluginInter
 from mypy.plugins import common
 from mypy.semanal import SemanticAnalyzer
 from mypy.typeanal import TypeAnalyser
-from mypy.types import AnyType, Instance, ProperType, TypedDictType, TypeOfAny, TypeType, get_proper_type
+from mypy.types import AnyType, Instance, ProperType, TypedDictType, TypeOfAny, TypeType, TypeVarType, get_proper_type
 from mypy.types import Type as MypyType
 from mypy.typevars import fill_typevars
 
@@ -34,7 +36,7 @@ from mypy_django_plugin.django.context import DjangoContext
 from mypy_django_plugin.exceptions import UnregisteredModelError
 from mypy_django_plugin.lib import fullnames, helpers
 from mypy_django_plugin.lib.fullnames import ANNOTATIONS_FULLNAME, ANY_ATTR_ALLOWED_CLASS_FULLNAME, MODEL_CLASS_FULLNAME
-from mypy_django_plugin.transformers.fields import get_field_descriptor_types
+from mypy_django_plugin.transformers.fields import FieldDescriptorTypes, get_field_descriptor_types
 from mypy_django_plugin.transformers.managers import (
     MANAGER_METHODS_RETURNING_QUERYSET,
     create_manager_info_from_from_queryset_call,
@@ -112,7 +114,7 @@ class ModelClassInitializer:
         # Not a generated manager
         return None
 
-    def get_or_create_manager_with_any_fallback(self, related_manager: bool = False) -> Optional[TypeInfo]:
+    def get_or_create_manager_with_any_fallback(self) -> Optional[TypeInfo]:
         """
         Create a Manager subclass with fallback to Any for unknown attributes
         and methods. This is used for unresolved managers, where we don't know
@@ -121,7 +123,7 @@ class ModelClassInitializer:
         The created class is reused if multiple unknown managers are encountered.
         """
 
-        name = "UnknownManager" if not related_manager else "UnknownRelatedManager"
+        name = "UnknownManager"
 
         # Check if we've already created a fallback manager class for this
         # module, and if so reuse that.
@@ -132,9 +134,7 @@ class ModelClassInitializer:
         fallback_queryset = self.get_or_create_queryset_with_any_fallback()
         if fallback_queryset is None:
             return None
-        base_manager_fullname = (
-            fullnames.MANAGER_CLASS_FULLNAME if not related_manager else fullnames.RELATED_MANAGER_CLASS
-        )
+        base_manager_fullname = fullnames.MANAGER_CLASS_FULLNAME
         base_manager_info = self.lookup_typeinfo(base_manager_fullname)
         if base_manager_info is None:
             return None
@@ -454,115 +454,105 @@ class AddReverseLookups(ModelClassInitializer):
         return self.lookup_typeinfo_or_incomplete_defn_error(fullnames.REVERSE_ONE_TO_ONE_DESCRIPTOR)
 
     @cached_property
+    def reverse_many_to_one_descriptor(self) -> TypeInfo:
+        return self.lookup_typeinfo_or_incomplete_defn_error(fullnames.REVERSE_MANY_TO_ONE_DESCRIPTOR)
+
+    @cached_property
     def many_to_many_descriptor(self) -> TypeInfo:
         return self.lookup_typeinfo_or_incomplete_defn_error(fullnames.MANY_TO_MANY_DESCRIPTOR)
 
     def process_relation(self, relation: ForeignObjectRel) -> None:
         attname = relation.get_accessor_name()
-        if attname is None or attname in self.model_classdef.info.names:
-            # No reverse accessor or already declared. Note that this would also leave any
-            # explicitly declared(i.e. non-inferred) reverse accessors alone
+        if attname is None:
+            # No reverse accessor.
             return
 
-        related_model_cls = self.django_context.get_field_related_model_cls(relation)
-        related_model_info = self.lookup_class_typeinfo_or_incomplete_defn_error(related_model_cls)
+        to_model_cls = self.django_context.get_field_related_model_cls(relation)
+        to_model_info = self.lookup_class_typeinfo_or_incomplete_defn_error(to_model_cls)
 
+        reverse_lookup_declared = attname in self.model_classdef.info.names
         if isinstance(relation, OneToOneRel):
-            self.add_new_node_to_model_class(
-                attname,
-                Instance(
-                    self.reverse_one_to_one_descriptor,
-                    [Instance(self.model_classdef.info, []), Instance(related_model_info, [])],
-                ),
-            )
-            return
-
-        elif isinstance(relation, ManyToManyRel):
-            # TODO: 'relation' should be based on `TypeInfo` instead of Django runtime.
-            to_fullname = helpers.get_class_fullname(relation.remote_field.model)
-            to_model_info = self.lookup_typeinfo_or_incomplete_defn_error(to_fullname)
-            assert relation.through is not None
-            through_fullname = helpers.get_class_fullname(relation.through)
-            through_model_info = self.lookup_typeinfo_or_incomplete_defn_error(through_fullname)
-            self.add_new_node_to_model_class(
-                attname,
-                Instance(self.many_to_many_descriptor, [Instance(to_model_info, []), Instance(through_model_info, [])]),
-            )
-            return
-
-        related_manager_info = None
-        try:
-            related_manager_info = self.lookup_typeinfo_or_incomplete_defn_error(fullnames.RELATED_MANAGER_CLASS)
-            default_manager = related_model_info.names.get("_default_manager")
-            if not default_manager:
-                raise helpers.IncompleteDefnException()
-        except helpers.IncompleteDefnException as exc:
-            if not self.api.final_iteration:
-                raise exc
-
-            # If a django model has a Manager class that cannot be
-            # resolved statically (if it is generated in a way where we
-            # cannot import it, like `objects = my_manager_factory()`),
-            # we fallback to the default related manager, so you at
-            # least get a base level of working type checking.
-            #
-            # See https://github.com/typeddjango/django-stubs/pull/993
-            # for more information on when this error can occur.
-            fallback_manager = self.get_or_create_manager_with_any_fallback(related_manager=True)
-            if fallback_manager is not None:
+            if not reverse_lookup_declared:
                 self.add_new_node_to_model_class(
-                    attname, Instance(fallback_manager, [Instance(related_model_info, [])])
+                    attname,
+                    Instance(
+                        self.reverse_one_to_one_descriptor,
+                        [Instance(self.model_classdef.info, []), Instance(to_model_info, [])],
+                    ),
                 )
-            # related_model_fullname = related_model_cls.__module__ + "." + related_model_cls.__name__
-            # self.ctx.api.fail(
-            #     (
-            #         "Couldn't resolve related manager for relation "
-            #         f"{relation.name!r} (from {related_model_fullname}."
-            #         f"{relation.field})."
-            #     ),
-            #     self.ctx.cls,
-            #     code=MANAGER_MISSING,
-            # )
             return
+        elif isinstance(relation, ManyToManyRel):
+            if not reverse_lookup_declared:
+                # TODO: 'relation' should be based on `TypeInfo` instead of Django runtime.
+                assert relation.through is not None
+                through_fullname = helpers.get_class_fullname(relation.through)
+                through_model_info = self.lookup_typeinfo_or_incomplete_defn_error(through_fullname)
+                self.add_new_node_to_model_class(
+                    attname,
+                    Instance(
+                        self.many_to_many_descriptor, [Instance(to_model_info, []), Instance(through_model_info, [])]
+                    ),
+                    is_classvar=True,
+                )
+            return
+        elif not reverse_lookup_declared:
+            # ManyToOneRel
+            self.add_new_node_to_model_class(
+                attname, Instance(self.reverse_many_to_one_descriptor, [Instance(to_model_info, [])]), is_classvar=True
+            )
 
-        # Check if the related model has a related manager subclassed from the default manager
+        related_manager_info = self.lookup_typeinfo_or_incomplete_defn_error(fullnames.RELATED_MANAGER_CLASS)
         # TODO: Support other reverse managers than `_default_manager`
-        default_reverse_manager_info = helpers.get_reverse_manager_info(
-            self.api, model_info=related_model_info, derived_from="_default_manager"
-        )
-        if default_reverse_manager_info:
-            self.add_new_node_to_model_class(attname, Instance(default_reverse_manager_info, []))
+        default_manager = to_model_info.names.get("_default_manager")
+        if default_manager is None and not self.api.final_iteration:
+            raise helpers.IncompleteDefnException()
+        elif (
+            # When we get no default manager we can't customize the reverse manager any
+            # further and will just fall back to the manager declared on the descriptor
+            default_manager is None
+            # '_default_manager' attribute is a node type we can't process
+            or not isinstance(default_manager.type, Instance)
+            # Already has a related manager subclassed from the default manager
+            or helpers.get_reverse_manager_info(self.api, model_info=to_model_info, derived_from="_default_manager")
+            is not None
+            # When the default manager isn't custom there's no need to create a new type
+            # as `RelatedManager` has `models.Manager` as base
+            or default_manager.type.type.fullname == fullnames.MANAGER_CLASS_FULLNAME
+        ):
+            if default_manager is None and self.api.final_iteration:
+                # If a django model has a Manager class that cannot be
+                # resolved statically (if it is generated in a way where we
+                # cannot import it, like `objects = my_manager_factory()`),
+                #
+                # See https://github.com/typeddjango/django-stubs/pull/993
+                # for more information on when this error can occur.
+                self.ctx.api.fail(
+                    (
+                        f"Couldn't resolve related manager {attname!r} for relation "
+                        f"'{to_model_info.fullname}.{relation.field.name}'."
+                    ),
+                    self.ctx.cls,
+                    code=MANAGER_MISSING,
+                )
             return
 
-        # The reverse manager we're looking for doesn't exist. So we
-        # create it. The (default) reverse manager type is built from a
-        # RelatedManager and the default manager on the related model
-        parametrized_related_manager_type = Instance(related_manager_info, [Instance(related_model_info, [])])
-        default_manager_type = default_manager.type
-        assert default_manager_type is not None
-        assert isinstance(default_manager_type, Instance)
-        # When the default manager isn't custom there's no need to create a new type
-        # as `RelatedManager` has `models.Manager` as base
-        if default_manager_type.type.fullname == fullnames.MANAGER_CLASS_FULLNAME:
-            self.add_new_node_to_model_class(attname, parametrized_related_manager_type)
-            return
-
+        # Create a reverse manager subclassed from the default manager of the related
+        # model and 'RelatedManager'
+        related_manager = Instance(related_manager_info, [Instance(to_model_info, [])])
         # The reverse manager is based on the related model's manager, so it makes most sense to add the new
         # related manager in that module
         new_related_manager_info = helpers.add_new_class_for_module(
-            module=self.api.modules[related_model_info.module_name],
-            name=f"{related_model_cls.__name__}_RelatedManager",
-            bases=[parametrized_related_manager_type, default_manager_type],
+            module=self.api.modules[to_model_info.module_name],
+            name=f"{to_model_info.name}_RelatedManager",
+            bases=[related_manager, default_manager.type],
         )
-        new_related_manager_info.metadata["django"] = {"related_manager_to_model": related_model_info.fullname}
         # Stash the new reverse manager type fullname on the related model, so we don't duplicate
         # or have to create it again for other reverse relations
         helpers.set_reverse_manager_info(
-            related_model_info,
+            to_model_info,
             derived_from="_default_manager",
             fullname=new_related_manager_info.fullname,
         )
-        self.add_new_node_to_model_class(attname, Instance(new_related_manager_info, []))
 
     def run_with_model_cls(self, model_cls: Type[Model]) -> None:
         # add related managers etc.
@@ -620,9 +610,15 @@ class AddExtraFieldMethods(ModelClassInitializer):
 
 class ProcessManyToManyFields(ModelClassInitializer):
     """
-    Processes 'ManyToManyField()' fields and generates any implicit through tables that
-    Django also generates. It won't do anything if the model is abstract or for fields
-    where an explicit 'through' argument has been passed.
+    Processes 'ManyToManyField()' fields and;
+
+    - Generates any implicit through tables that Django also generates. It won't do
+      anything if the model is abstract or for fields where an explicit 'through'
+      argument has been passed.
+    - Creates related managers for both ends of the many to many relationship
+
+    TODO: Move the 'related_name' contribution from 'AddReverseLookups' to here. As it
+          makes sense to add it when processing ManyToManyField
     """
 
     def statements(self) -> Iterable[Statement]:
@@ -639,6 +635,10 @@ class ProcessManyToManyFields(ModelClassInitializer):
         while model_bases:
             model = model_bases.popleft()
             yield from model.defs.body
+            if isinstance(model.info, FakeInfo):
+                # While loading from cache ClassDef infos are faked and 'FakeInfo' doesn't have
+                # all attributes of a 'TypeInfo' set. See #2184
+                continue
             for base in model.info.bases:
                 # Only produce any additional statements from abstract model bases, as they
                 # simulate regular python inheritance. Avoid concrete models, and any of their
@@ -651,17 +651,6 @@ class ProcessManyToManyFields(ModelClassInitializer):
         if self.is_model_abstract:
             # TODO: Create abstract through models?
             return
-
-        # Start out by prefetching a couple of dependencies needed to be able to declare any
-        # new, implicit, through model class.
-        model_base = self.lookup_typeinfo(fullnames.MODEL_CLASS_FULLNAME)
-        fk_field = self.lookup_typeinfo(fullnames.FOREIGN_KEY_FULLNAME)
-        manager_info = self.lookup_typeinfo(fullnames.MANAGER_CLASS_FULLNAME)
-        if model_base is None or fk_field is None or manager_info is None:
-            raise helpers.IncompleteDefnException()
-
-        from_pk = self.get_pk_instance(self.model_classdef.info)
-        fk_set_type, fk_get_type = get_field_descriptor_types(fk_field, is_set_nullable=False, is_get_nullable=False)
 
         for statement in self.statements():
             # Check if this part of the class body is an assignment from a 'ManyToManyField' call
@@ -683,91 +672,22 @@ class ProcessManyToManyFields(ModelClassInitializer):
                     continue
                 # Resolve argument information of the 'ManyToManyField(...)' call
                 args = self.resolve_many_to_many_arguments(statement.rvalue, context=statement)
-                if (
-                    # Ignore calls without required 'to' argument, mypy will complain
-                    args is None
-                    or not isinstance(args.to.model, Instance)
-                    # Call has explicit 'through=', no need to create any implicit through table
-                    or args.through is not None
-                ):
+                # Ignore calls without required 'to' argument, mypy will complain
+                if args is None:
                     continue
-
                 # Get the names of the implicit through model that will be generated
                 through_model_name = f"{self.model_classdef.name}_{m2m_field_name}"
-                through_model_fullname = f"{self.model_classdef.info.module_name}.{through_model_name}"
-                # If implicit through model is already declared there's nothing more we should do
-                through_model = self.lookup_typeinfo(through_model_fullname)
-                if through_model is not None:
-                    continue
-                # Declare a new, empty, implicitly generated through model class named: '<Model>_<field_name>'
-                through_model = self.add_new_class_for_current_module(
-                    through_model_name, bases=[Instance(model_base, [])]
+                self.create_through_table_class(
+                    field_name=m2m_field_name,
+                    model_name=through_model_name,
+                    model_fullname=f"{self.model_classdef.info.module_name}.{through_model_name}",
+                    m2m_args=args,
                 )
-                # We attempt to be a bit clever here and store the generated through model's fullname in
-                # the metadata of the class containing the 'ManyToManyField' call expression, where its
-                # identifier is the field name of the 'ManyToManyField'. This would allow the containing
-                # model to always find the implicit through model, so that it doesn't get lost.
-                model_metadata = helpers.get_django_metadata(self.model_classdef.info)
-                model_metadata.setdefault("m2m_throughs", {})
-                model_metadata["m2m_throughs"][m2m_field_name] = through_model.fullname
-                # Add a 'pk' symbol to the model class
-                helpers.add_new_sym_for_info(
-                    through_model, name="pk", sym_type=self.default_pk_instance.copy_modified()
-                )
-                # Add an 'id' symbol to the model class
-                helpers.add_new_sym_for_info(
-                    through_model, name="id", sym_type=self.default_pk_instance.copy_modified()
-                )
-                # Add the foreign key to the model containing the 'ManyToManyField' call:
-                # <containing_model> or from_<model>
-                from_name = (
-                    f"from_{self.model_classdef.name.lower()}" if args.to.self else self.model_classdef.name.lower()
-                )
-                helpers.add_new_sym_for_info(
-                    through_model,
-                    name=from_name,
-                    sym_type=Instance(
-                        fk_field,
-                        [
-                            helpers.convert_any_to_type(fk_set_type, Instance(self.model_classdef.info, [])),
-                            helpers.convert_any_to_type(fk_get_type, Instance(self.model_classdef.info, [])),
-                        ],
-                    ),
-                )
-                # Add the foreign key's '_id' field: <containing_model>_id or from_<model>_id
-                helpers.add_new_sym_for_info(through_model, name=f"{from_name}_id", sym_type=from_pk.copy_modified())
-                # Add the foreign key to the model on the opposite side of the relation
-                # i.e. the model given as 'to' argument to the 'ManyToManyField' call:
-                # <other_model> or to_<model>
-                to_name = f"to_{args.to.model.type.name.lower()}" if args.to.self else args.to.model.type.name.lower()
-                helpers.add_new_sym_for_info(
-                    through_model,
-                    name=to_name,
-                    sym_type=Instance(
-                        fk_field,
-                        [
-                            helpers.convert_any_to_type(fk_set_type, args.to.model),
-                            helpers.convert_any_to_type(fk_get_type, args.to.model),
-                        ],
-                    ),
-                )
-                # Add the foreign key's '_id' field: <other_model>_id or to_<model>_id
-                other_pk = self.get_pk_instance(args.to.model.type)
-                helpers.add_new_sym_for_info(through_model, name=f"{to_name}_id", sym_type=other_pk.copy_modified())
-                # Add a manager named 'objects'
-                helpers.add_new_sym_for_info(
-                    through_model,
-                    name="objects",
-                    sym_type=Instance(manager_info, [Instance(through_model, [])]),
-                    is_classvar=True,
-                )
-                # Also add manager as '_default_manager' attribute
-                helpers.add_new_sym_for_info(
-                    through_model,
-                    name="_default_manager",
-                    sym_type=Instance(manager_info, [Instance(through_model, [])]),
-                    is_classvar=True,
-                )
+                # Create a 'ManyRelatedManager' class for the processed model
+                self.create_many_related_manager(Instance(self.model_classdef.info, []))
+                if isinstance(args.to.model, Instance):
+                    # Create a 'ManyRelatedManager' class for the related model
+                    self.create_many_related_manager(args.to.model)
 
     @cached_property
     def default_pk_instance(self) -> Instance:
@@ -778,6 +698,39 @@ class ProcessManyToManyFields(ModelClassInitializer):
             default_pk_field,
             list(get_field_descriptor_types(default_pk_field, is_set_nullable=True, is_get_nullable=False)),
         )
+
+    @cached_property
+    def model_pk_instance(self) -> Instance:
+        return self.get_pk_instance(self.model_classdef.info)
+
+    @cached_property
+    def model_base(self) -> TypeInfo:
+        info = self.lookup_typeinfo(fullnames.MODEL_CLASS_FULLNAME)
+        if info is None:
+            raise helpers.IncompleteDefnException()
+        return info
+
+    @cached_property
+    def fk_field(self) -> TypeInfo:
+        info = self.lookup_typeinfo(fullnames.FOREIGN_KEY_FULLNAME)
+        if info is None:
+            raise helpers.IncompleteDefnException()
+        return info
+
+    @cached_property
+    def manager_info(self) -> TypeInfo:
+        info = self.lookup_typeinfo(fullnames.MANAGER_CLASS_FULLNAME)
+        if info is None:
+            raise helpers.IncompleteDefnException()
+        return info
+
+    @cached_property
+    def fk_field_types(self) -> FieldDescriptorTypes:
+        return get_field_descriptor_types(self.fk_field, is_set_nullable=False, is_get_nullable=False)
+
+    @cached_property
+    def many_related_manager(self) -> TypeInfo:
+        return self.lookup_typeinfo_or_incomplete_defn_error(fullnames.MANY_RELATED_MANAGER)
 
     def get_pk_instance(self, model: TypeInfo, /) -> Instance:
         """
@@ -790,6 +743,86 @@ class ProcessManyToManyFields(ModelClassInitializer):
             if isinstance(pk, Var) and isinstance(pk.type, Instance):
                 return pk.type
         return self.default_pk_instance
+
+    def create_through_table_class(
+        self, field_name: str, model_name: str, model_fullname: str, m2m_args: M2MArguments
+    ) -> None:
+        if (
+            not isinstance(m2m_args.to.model, Instance)
+            # Call has explicit 'through=', no need to create any implicit through table
+            or m2m_args.through is not None
+        ):
+            return
+
+        # If through model is already declared there's nothing more we should do
+        through_model = self.lookup_typeinfo(model_fullname)
+        if through_model is not None:
+            return
+        # Declare a new, empty, implicitly generated through model class named: '<Model>_<field_name>'
+        through_model = self.add_new_class_for_current_module(model_name, bases=[Instance(self.model_base, [])])
+        # We attempt to be a bit clever here and store the generated through model's fullname in
+        # the metadata of the class containing the 'ManyToManyField' call expression, where its
+        # identifier is the field name of the 'ManyToManyField'. This would allow the containing
+        # model to always find the implicit through model, so that it doesn't get lost.
+        model_metadata = helpers.get_django_metadata(self.model_classdef.info)
+        model_metadata.setdefault("m2m_throughs", {})
+        model_metadata["m2m_throughs"][field_name] = through_model.fullname
+        # Add a 'pk' symbol to the model class
+        helpers.add_new_sym_for_info(through_model, name="pk", sym_type=self.default_pk_instance.copy_modified())
+        # Add an 'id' symbol to the model class
+        helpers.add_new_sym_for_info(through_model, name="id", sym_type=self.default_pk_instance.copy_modified())
+        # Add the foreign key to the model containing the 'ManyToManyField' call:
+        # <containing_model> or from_<model>
+        from_name = f"from_{self.model_classdef.name.lower()}" if m2m_args.to.self else self.model_classdef.name.lower()
+        helpers.add_new_sym_for_info(
+            through_model,
+            name=from_name,
+            sym_type=Instance(
+                self.fk_field,
+                [
+                    helpers.convert_any_to_type(self.fk_field_types.set, Instance(self.model_classdef.info, [])),
+                    helpers.convert_any_to_type(self.fk_field_types.get, Instance(self.model_classdef.info, [])),
+                ],
+            ),
+        )
+        # Add the foreign key's '_id' field: <containing_model>_id or from_<model>_id
+        helpers.add_new_sym_for_info(
+            through_model, name=f"{from_name}_id", sym_type=self.model_pk_instance.copy_modified()
+        )
+        # Add the foreign key to the model on the opposite side of the relation
+        # i.e. the model given as 'to' argument to the 'ManyToManyField' call:
+        # <other_model> or to_<model>
+        to_name = (
+            f"to_{m2m_args.to.model.type.name.lower()}" if m2m_args.to.self else m2m_args.to.model.type.name.lower()
+        )
+        helpers.add_new_sym_for_info(
+            through_model,
+            name=to_name,
+            sym_type=Instance(
+                self.fk_field,
+                [
+                    helpers.convert_any_to_type(self.fk_field_types.set, m2m_args.to.model),
+                    helpers.convert_any_to_type(self.fk_field_types.get, m2m_args.to.model),
+                ],
+            ),
+        )
+        # Add the foreign key's '_id' field: <other_model>_id or to_<model>_id
+        other_pk = self.get_pk_instance(m2m_args.to.model.type)
+        helpers.add_new_sym_for_info(through_model, name=f"{to_name}_id", sym_type=other_pk.copy_modified())
+        # Add a manager named 'objects'
+        helpers.add_new_sym_for_info(
+            through_model,
+            name="objects",
+            sym_type=Instance(self.manager_info, [Instance(through_model, [])]),
+            is_classvar=True,
+        )
+        # Also add manager as '_default_manager' attribute
+        helpers.add_new_sym_for_info(
+            through_model,
+            name="_default_manager",
+            sym_type=Instance(self.manager_info, [Instance(through_model, [])]),
+            is_classvar=True,
+        )
 
     def resolve_many_to_many_arguments(self, call: CallExpr, /, context: Context) -> Optional[M2MArguments]:
         """
@@ -835,6 +868,47 @@ class ProcessManyToManyFields(ModelClassInitializer):
                 through = M2MThrough(arg=through_arg, model=through_model)
 
         return M2MArguments(to=to, through=through)
+
+    def create_many_related_manager(self, model: Instance) -> None:
+        """
+        Creates a generic manager that subclasses both 'ManyRelatedManager' and the
+        default manager of the given model. These are normally used on both models
+        involved in a ManyToManyField.
+
+        The manager classes are generic over a '_Through' model, meaning that they can
+        be reused for multiple many to many relations.
+        """
+        if helpers.get_many_to_many_manager_info(self.api, to=model.type, derived_from="_default_manager") is not None:
+            return
+
+        default_manager_node = model.type.names.get("_default_manager")
+        if default_manager_node is None:
+            raise helpers.IncompleteDefnException()
+        elif not isinstance(default_manager_node.type, Instance):
+            return
+
+        # Create a reusable generic subclass that is generic over a 'through' model,
+        # explicitly declared it'd could have looked something like below
+        #
+        # class X(models.Model): ...
+        # _Through = TypeVar("_Through", bound=models.Model)
+        # class X_ManyRelatedManager(ManyRelatedManager[X, _Through], type(X._default_manager), Generic[_Through]): ...
+        through_type_var = self.many_related_manager.defn.type_vars[1]
+        assert isinstance(through_type_var, TypeVarType)
+        generic_to_many_related_manager = Instance(self.many_related_manager, [model, through_type_var.copy_modified()])
+        related_manager_info = helpers.add_new_class_for_module(
+            module=self.api.modules[model.type.module_name],
+            name=f"{model.type.name}_ManyRelatedManager",
+            bases=[generic_to_many_related_manager, default_manager_node.type],
+        )
+        # Reuse the '_Through' `TypeVar` from `ManyRelatedManager` in our subclass
+        related_manager_info.defn.type_vars = [through_type_var.copy_modified()]
+        related_manager_info.add_type_vars()
+        # Track the existence of our manager subclass, by tying it to the model it
+        # operates on
+        helpers.set_many_to_many_manager_info(
+            to=model.type, derived_from="_default_manager", manager_info=related_manager_info
+        )
 
 
 class MetaclassAdjustments(ModelClassInitializer):
