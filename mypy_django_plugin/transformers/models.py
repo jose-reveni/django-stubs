@@ -32,7 +32,6 @@ from mypy.types import Type as MypyType
 from mypy.typevars import fill_typevars
 
 from mypy_django_plugin.django.context import DjangoContext
-from mypy_django_plugin.errorcodes import MANAGER_MISSING
 from mypy_django_plugin.exceptions import UnregisteredModelError
 from mypy_django_plugin.lib import fullnames, helpers
 from mypy_django_plugin.lib.fullnames import ANNOTATIONS_FULLNAME, ANY_ATTR_ALLOWED_CLASS_FULLNAME, MODEL_CLASS_FULLNAME
@@ -519,21 +518,21 @@ class AddReverseLookups(ModelClassInitializer):
             # as `RelatedManager` has `models.Manager` as base
             or default_manager.type.type.fullname == fullnames.MANAGER_CLASS_FULLNAME
         ):
-            if default_manager is None and self.api.final_iteration:
-                # If a django model has a Manager class that cannot be
-                # resolved statically (if it is generated in a way where we
-                # cannot import it, like `objects = my_manager_factory()`),
-                #
-                # See https://github.com/typeddjango/django-stubs/pull/993
-                # for more information on when this error can occur.
-                self.ctx.api.fail(
-                    (
-                        f"Couldn't resolve related manager {attname!r} for relation "
-                        f"'{to_model_info.fullname}.{relation.field.name}'."
-                    ),
-                    self.ctx.cls,
-                    code=MANAGER_MISSING,
-                )
+            # if default_manager is None and self.api.final_iteration:
+            # If a django model has a Manager class that cannot be
+            # resolved statically (if it is generated in a way where we
+            # cannot import it, like `objects = my_manager_factory()`),
+            #
+            # See https://github.com/typeddjango/django-stubs/pull/993
+            # for more information on when this error can occur.
+            # self.ctx.api.fail(
+            #     (
+            #         f"Couldn't resolve related manager {attname!r} for relation "
+            #         f"'{to_model_info.fullname}.{relation.field.name}'."
+            #     ),
+            #     self.ctx.cls,
+            #     code=MANAGER_MISSING,
+            # )
             return
 
         # Create a reverse manager subclassed from the default manager of the related
