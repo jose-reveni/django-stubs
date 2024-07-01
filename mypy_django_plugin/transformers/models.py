@@ -5,8 +5,8 @@ from typing import Any, Dict, Iterable, List, Optional, Type, Union, cast
 from django.db.models import Manager, Model
 from django.db.models.fields import DateField, DateTimeField, Field
 from django.db.models.fields.reverse_related import ForeignObjectRel, ManyToManyRel, OneToOneRel
-from errorcodes import MANAGER_MISSING
 from mypy.checker import TypeChecker
+from mypy.errorcodes import MANAGER_MISSING
 from mypy.nodes import (
     ARG_STAR2,
     MDEF,
