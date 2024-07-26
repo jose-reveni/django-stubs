@@ -543,7 +543,6 @@
         myapp/models:23: error: Could not resolve manager type for "myapp.models.TwoUnresolvable.objects"  [django-manager-missing]
         myapp/models:24: error: Could not resolve manager type for "myapp.models.TwoUnresolvable.second_objects"  [django-manager-missing]
         myapp/models:27: error: Could not resolve manager type for "myapp.models.AbstractUnresolvable.objects"  [django-manager-missing]
-        myapp/models:32: error: Could not resolve manager type for "myapp.models.InvisibleUnresolvable.objects"  [django-manager-missing]
         myapp/models:36: note: Revealed type is "django.db.models.manager.Manager[myapp.models.User]"
         myapp/models:37: note: Revealed type is "django.db.models.manager.Manager[myapp.models.User]"
         myapp/models:39: note: Revealed type is "myapp.models.UnknownManager[myapp.models.Booking]"
@@ -654,3 +653,20 @@
                         def get_instance(self) -> int:
                             pass
                     objects = MyManager()
+
+-   case: test_typechecks_filter_methods_of_queryset_type
+    main: |
+        from myapp.models import MyModel
+        MyModel.objects.filter(id=1).filter(invalid=1)  # E: Cannot resolve keyword 'invalid' into field. Choices are: id  [misc]
+        MyModel.objects.filter(id=1).get(invalid=1)  # E: Cannot resolve keyword 'invalid' into field. Choices are: id  [misc]
+        MyModel.objects.filter(id=1).exclude(invalid=1)  # E: Cannot resolve keyword 'invalid' into field. Choices are: id  [misc]
+        MyModel.objects.filter(id=1).create(invalid=1)  # E: Unexpected attribute "invalid" for model "MyModel"  [misc]
+    installed_apps:
+        - myapp
+    files:
+        -   path: myapp/__init__.py
+        -   path: myapp/models.py
+            content: |
+                from django.db import models
+
+                class MyModel(models.Model): ...

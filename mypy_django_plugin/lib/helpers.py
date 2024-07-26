@@ -18,6 +18,7 @@ from mypy.nodes import (
     MemberExpr,
     MypyFile,
     NameExpr,
+    RefExpr,
     StrExpr,
     SymbolNode,
     SymbolTable,
@@ -32,7 +33,6 @@ from mypy.plugin import (
     DynamicClassDefContext,
     FunctionContext,
     MethodContext,
-    SemanticAnalyzerPluginInterface,
 )
 from mypy.semanal import SemanticAnalyzer
 from mypy.types import AnyType, Instance, LiteralType, NoneTyp, TupleType, TypedDictType, TypeOfAny, UnionType
@@ -62,9 +62,7 @@ def get_django_metadata(model_info: TypeInfo) -> DjangoTypeMetadata:
     return cast(DjangoTypeMetadata, model_info.metadata.setdefault("django", {}))
 
 
-def get_django_metadata_bases(
-    model_info: TypeInfo, key: Literal["baseform_bases", "manager_bases", "queryset_bases"]
-) -> Dict[str, int]:
+def get_django_metadata_bases(model_info: TypeInfo, key: Literal["baseform_bases", "queryset_bases"]) -> Dict[str, int]:
     return get_django_metadata(model_info).setdefault(key, cast(Dict[str, int], {}))
 
 
@@ -400,12 +398,6 @@ def get_typechecker_api(ctx: Union[AttributeContext, MethodContext, FunctionCont
     return ctx.api
 
 
-def is_model_subclass_info(info: TypeInfo, django_context: "DjangoContext") -> bool:
-    return info.fullname in django_context.all_registered_model_class_fullnames or info.has_base(
-        fullnames.MODEL_CLASS_FULLNAME
-    )
-
-
 def check_types_compatible(
     ctx: Union[FunctionContext, MethodContext], *, expected_type: MypyType, actual_type: MypyType, error_message: str
 ) -> None:
@@ -425,13 +417,6 @@ def add_new_sym_for_info(
     var.is_inferred = True
     var.is_classvar = is_classvar
     info.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True, no_serialize=no_serialize)
-
-
-def add_new_manager_base(api: SemanticAnalyzerPluginInterface, fullname: str) -> None:
-    sym = api.lookup_fully_qualified_or_none(fullnames.MANAGER_CLASS_FULLNAME)
-    if sym is not None and isinstance(sym.node, TypeInfo):
-        bases = get_django_metadata_bases(sym.node, "manager_bases")
-        bases[fullname] = 1
 
 
 def is_abstract_model(model: TypeInfo) -> bool:
@@ -497,3 +482,38 @@ def resolve_lazy_reference(
 
 def is_model_type(info: TypeInfo) -> bool:
     return info.metaclass_type is not None and info.metaclass_type.type.has_base(fullnames.MODEL_METACLASS_FULLNAME)
+
+
+def get_model_from_expression(
+    expr: Expression,
+    *,
+    self_model: TypeInfo,
+    api: Union[TypeChecker, SemanticAnalyzer],
+    django_context: "DjangoContext",
+) -> Optional[Instance]:
+    """
+    Attempts to resolve an expression to a 'TypeInfo' instance. Any lazy reference
+    argument(e.g. "<app_label>.<object_name>") to a Django model is also attempted.
+    """
+    if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo):
+        if is_model_type(expr.node):
+            return Instance(expr.node, [])
+
+    if isinstance(expr, StrExpr) and expr.value == "self":
+        return Instance(self_model, [])
+
+    lazy_reference = None
+    if isinstance(expr, StrExpr):
+        lazy_reference = expr.value
+    elif (
+        isinstance(expr, MemberExpr)
+        and isinstance(expr.expr, NameExpr)
+        and f"{expr.expr.fullname}.{expr.name}" == fullnames.AUTH_USER_MODEL_FULLNAME
+    ):
+        lazy_reference = django_context.settings.AUTH_USER_MODEL
+
+    if lazy_reference is not None:
+        model_info = resolve_lazy_reference(lazy_reference, api=api, django_context=django_context, ctx=expr)
+        if model_info is not None:
+            return Instance(model_info, [])
+    return None
