@@ -10,6 +10,7 @@ from mypy.mro import calculate_mro
 from mypy.nodes import (
     GDEF,
     MDEF,
+    ArgKind,
     AssignmentStmt,
     Block,
     ClassDef,
@@ -35,12 +36,22 @@ from mypy.plugin import (
     MethodContext,
 )
 from mypy.semanal import SemanticAnalyzer
-from mypy.types import AnyType, Instance, LiteralType, NoneTyp, TupleType, TypedDictType, TypeOfAny, UnionType
+from mypy.typeanal import make_optional_type
+from mypy.types import (
+    AnyType,
+    Instance,
+    LiteralType,
+    NoneTyp,
+    TupleType,
+    TypedDictType,
+    TypeOfAny,
+    UnionType,
+    get_proper_type,
+)
 from mypy.types import Type as MypyType
 from typing_extensions import TypedDict
 
 from mypy_django_plugin.lib import fullnames
-from mypy_django_plugin.lib.fullnames import WITH_ANNOTATIONS_FULLNAME
 
 if TYPE_CHECKING:
     from mypy_django_plugin.django.context import DjangoContext
@@ -48,6 +59,7 @@ if TYPE_CHECKING:
 
 class DjangoTypeMetadata(TypedDict, total=False):
     is_abstract_model: bool
+    is_annotated_model: bool
     from_queryset_manager: str
     reverse_managers: Dict[str, str]
     baseform_bases: Dict[str, int]
@@ -101,6 +113,14 @@ def set_manager_to_model(manager: TypeInfo, to_model: TypeInfo) -> None:
 
 def get_manager_to_model(manager: TypeInfo) -> Optional[str]:
     return get_django_metadata(manager).get("manager_to_model")
+
+
+def mark_as_annotated_model(model: TypeInfo) -> None:
+    get_django_metadata(model)["is_annotated_model"] = True
+
+
+def is_annotated_model(model: TypeInfo) -> bool:
+    return get_django_metadata(model).get("is_annotated_model", False)
 
 
 class IncompleteDefnException(Exception):
@@ -182,6 +202,12 @@ def get_call_argument_by_name(ctx: Union[FunctionContext, MethodContext], name: 
     Return the expression for the specific argument.
     This helper should only be used with non-star arguments.
     """
+    # try and pull the named argument from the caller first
+    for kinds, argnames, args in zip(ctx.arg_kinds, ctx.arg_names, ctx.args):
+        for kind, argname, arg in zip(kinds, argnames, args):
+            if kind == ArgKind.ARG_NAMED and argname == name:
+                return arg
+
     if name not in ctx.callee_arg_names:
         return None
     idx = ctx.callee_arg_names.index(name)
@@ -207,12 +233,9 @@ def get_call_argument_type_by_name(ctx: Union[FunctionContext, MethodContext], n
     return arg_types[0]
 
 
-def make_optional(typ: MypyType) -> MypyType:
-    return UnionType.make_union([typ, NoneTyp()])
-
-
 def is_optional(typ: MypyType) -> bool:
-    return isinstance(typ, UnionType) and any(isinstance(item, NoneTyp) for item in typ.items)
+    typ = get_proper_type(typ)
+    return isinstance(typ, UnionType) and any(isinstance(get_proper_type(item), NoneTyp) for item in typ.items)
 
 
 # Duplicating mypy.semanal_shared.parse_bool because importing it directly caused ImportError (#1784)
@@ -251,7 +274,7 @@ def get_private_descriptor_type(type_info: TypeInfo, private_field_name: str, is
             return AnyType(TypeOfAny.explicit)
 
         if is_nullable:
-            descriptor_type = make_optional(descriptor_type)
+            descriptor_type = make_optional_type(descriptor_type)
         return descriptor_type
     return AnyType(TypeOfAny.explicit)
 
@@ -263,7 +286,7 @@ def get_field_lookup_exact_type(api: TypeChecker, field: "Field[Any, Any]") -> M
         rel_model_info = lookup_class_typeinfo(api, lookup_type_class)
         if rel_model_info is None:
             return AnyType(TypeOfAny.from_error)
-        return make_optional(Instance(rel_model_info, []))
+        return make_optional_type(Instance(rel_model_info, []))
 
     field_info = lookup_class_typeinfo(api, field.__class__)
     if field_info is None:
@@ -276,10 +299,6 @@ def get_nested_meta_node_for_current_class(info: TypeInfo) -> Optional[TypeInfo]
     if metaclass_sym is not None and isinstance(metaclass_sym.node, TypeInfo):
         return metaclass_sym.node
     return None
-
-
-def is_annotated_model_fullname(model_cls_fullname: str) -> bool:
-    return model_cls_fullname.startswith(WITH_ANNOTATIONS_FULLNAME + "[")
 
 
 def create_type_info(name: str, module: str, bases: List[Instance]) -> TypeInfo:
@@ -354,30 +373,35 @@ def make_tuple(api: "TypeChecker", fields: List[MypyType]) -> TupleType:
 
 
 def convert_any_to_type(typ: MypyType, referred_to_type: MypyType) -> MypyType:
-    if isinstance(typ, UnionType):
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, UnionType):
         converted_items = []
-        for item in typ.items:
+        for item in proper_type.items:
             converted_items.append(convert_any_to_type(item, referred_to_type))
         return UnionType.make_union(converted_items, line=typ.line, column=typ.column)
-    if isinstance(typ, Instance):
+    if isinstance(proper_type, Instance):
         args = []
-        for default_arg in typ.args:
+        for default_arg in proper_type.args:
+            default_arg = get_proper_type(default_arg)
             if isinstance(default_arg, AnyType):
                 args.append(referred_to_type)
             else:
                 args.append(default_arg)
-        return reparametrize_instance(typ, args)
+        return reparametrize_instance(proper_type, args)
 
-    if isinstance(typ, AnyType):
+    if isinstance(proper_type, AnyType):
         return referred_to_type
 
     return typ
 
 
 def make_typeddict(
-    api: CheckerPluginInterface, fields: "OrderedDict[str, MypyType]", required_keys: Set[str]
+    api: Union[SemanticAnalyzer, CheckerPluginInterface], fields: Dict[str, MypyType], required_keys: Set[str]
 ) -> TypedDictType:
-    fallback_type = api.named_generic_type("typing._TypedDict", [])
+    if isinstance(api, CheckerPluginInterface):
+        fallback_type = api.named_generic_type("typing._TypedDict", [])
+    else:
+        fallback_type = api.named_type("typing._TypedDict", [])
     typed_dict_type = TypedDictType(fields, required_keys=required_keys, fallback=fallback_type)
     return typed_dict_type
 
@@ -454,7 +478,8 @@ def is_abstract_model(model: TypeInfo) -> bool:
                 # abstract = True (builtins.bool)
                 rhs_is_true = parse_bool(stmt.rvalue) is True
                 # abstract: Literal[True]
-                is_literal_true = isinstance(stmt.type, LiteralType) and stmt.type.value is True
+                stmt_type = get_proper_type(stmt.type)
+                is_literal_true = isinstance(stmt_type, LiteralType) and stmt_type.value is True
                 metadata["is_abstract_model"] = rhs_is_true or is_literal_true
                 return metadata["is_abstract_model"]
 
@@ -526,3 +551,7 @@ def get_model_from_expression(
         if model_info is not None:
             return Instance(model_info, [])
     return None
+
+
+def fill_manager(manager: TypeInfo, typ: MypyType) -> Instance:
+    return Instance(manager, [typ] if manager.is_generic() else [])

@@ -31,12 +31,12 @@ from django.db.models.sql.query import Query
 from mypy.checker import TypeChecker
 from mypy.nodes import TypeInfo
 from mypy.plugin import MethodContext
-from mypy.types import AnyType, Instance, TypeOfAny, UnionType
+from mypy.typeanal import make_optional_type
+from mypy.types import AnyType, Instance, ProperType, TypeOfAny, UnionType, get_proper_type
 from mypy.types import Type as MypyType
 
 from mypy_django_plugin.exceptions import UnregisteredModelError
 from mypy_django_plugin.lib import fullnames, helpers
-from mypy_django_plugin.lib.fullnames import WITH_ANNOTATIONS_FULLNAME
 
 # This import fails when `psycopg2` is not installed, avoid crashing the plugin.
 try:
@@ -95,13 +95,16 @@ def _get_field_type_from_model_type_info(info: Optional[TypeInfo], field_name: s
     if info is None:
         return None
     field_node = info.get(field_name)
-    if field_node is None or not isinstance(field_node.type, Instance):
+    if field_node is None:
+        return None
+    field_type = get_proper_type(field_node.type)
+    if not isinstance(field_type, Instance):
         return None
     # Field declares a set and a get type arg. Fallback to `None` when we can't find any args
-    elif len(field_node.type.args) != 2:
+    elif len(field_type.args) != 2:
         return None
     else:
-        return field_node.type
+        return field_type
 
 
 def _get_field_set_type_from_model_type_info(info: Optional[TypeInfo], field_name: str) -> Optional[MypyType]:
@@ -142,15 +145,6 @@ class DjangoContext:
 
     def get_model_class_by_fullname(self, fullname: str) -> Optional[Type[Model]]:
         """Returns None if Model is abstract"""
-        annotated_prefix = WITH_ANNOTATIONS_FULLNAME + "["
-        if fullname.startswith(annotated_prefix):
-            # For our "annotated models", extract the original model fullname
-            fullname = fullname[len(annotated_prefix) :].rstrip("]")
-            if "," in fullname:
-                # Remove second type arg, which might be present
-                fullname = fullname[: fullname.index(",")]
-            fullname = fullname.replace("__", ".")
-
         module, _, model_cls_name = fullname.rpartition(".")
         return self.model_modules.get(module, {}).get(model_cls_name)
 
@@ -189,7 +183,7 @@ class DjangoContext:
             primary_key_type = self.get_field_get_type(api, rel_model_info, primary_key_field, method="init")
 
             model_and_primary_key_type = UnionType.make_union([Instance(rel_model_info, []), primary_key_type])
-            return helpers.make_optional(model_and_primary_key_type)
+            return make_optional_type(model_and_primary_key_type)
 
         field_info = helpers.lookup_class_typeinfo(api, field.__class__)
         if field_info is None:
@@ -482,11 +476,23 @@ class DjangoContext:
             raise LookupsAreUnsupported()
         return self._resolve_field_from_parts(field_parts, model_cls)
 
-    def resolve_lookup_expected_type(self, ctx: MethodContext, model_cls: Type[Model], lookup: str) -> MypyType:
+    def resolve_lookup_expected_type(
+        self, ctx: MethodContext, model_cls: Type[Model], lookup: str, model_instance: Instance
+    ) -> MypyType:
         try:
             solved_lookup = self.solve_lookup_type(model_cls, lookup)
         except FieldError as exc:
-            ctx.api.fail(exc.args[0], ctx.context)
+            if (
+                helpers.is_annotated_model(model_instance.type)
+                and model_instance.extra_attrs
+                and lookup in model_instance.extra_attrs.attrs
+            ):
+                return model_instance.extra_attrs.attrs[lookup]
+
+            msg = exc.args[0]
+            if model_instance.extra_attrs:
+                msg = ", ".join((msg, *model_instance.extra_attrs.attrs.keys()))
+            ctx.api.fail(msg, ctx.context)
             return AnyType(TypeOfAny.from_error)
 
         if solved_lookup is None:
@@ -515,19 +521,22 @@ class DjangoContext:
             return AnyType(TypeOfAny.explicit)
 
         for lookup_base in helpers.iter_bases(lookup_info):
-            if lookup_base.args and isinstance(lookup_base.args[0], Instance):
-                lookup_type: MypyType = lookup_base.args[0]
+            if lookup_base.args and isinstance((lookup_type := get_proper_type(lookup_base.args[0])), Instance):
                 # if it's Field, consider lookup_type a __get__ of current field
                 if isinstance(lookup_type, Instance) and lookup_type.type.fullname == fullnames.FIELD_FULLNAME:
                     field_info = helpers.lookup_class_typeinfo(helpers.get_typechecker_api(ctx), field.__class__)
                     if field_info is None:
                         return AnyType(TypeOfAny.explicit)
-                    lookup_type = helpers.get_private_descriptor_type(
-                        field_info, "_pyi_private_get_type", is_nullable=field.null
+                    lookup_type = get_proper_type(
+                        helpers.get_private_descriptor_type(field_info, "_pyi_private_get_type", is_nullable=field.null)
                     )
                 return lookup_type
 
         return AnyType(TypeOfAny.explicit)
 
-    def resolve_f_expression_type(self, f_expression_type: Instance) -> MypyType:
+    def resolve_f_expression_type(self, f_expression_type: Instance) -> ProperType:
         return AnyType(TypeOfAny.explicit)
+
+    @cached_property
+    def is_contrib_auth_installed(self) -> bool:
+        return "django.contrib.auth" in self.settings.INSTALLED_APPS

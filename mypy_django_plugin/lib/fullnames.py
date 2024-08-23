@@ -1,3 +1,4 @@
+ABSTRACT_BASE_USER_MODEL_FULLNAME = "django.contrib.auth.base_user.AbstractBaseUser"
 ABSTRACT_USER_MODEL_FULLNAME = "django.contrib.auth.models.AbstractUser"
 PERMISSION_MIXIN_CLASS_FULLNAME = "django.contrib.auth.models.PermissionsMixin"
 MODEL_METACLASS_FULLNAME = "django.db.models.base.ModelBase"
@@ -19,7 +20,7 @@ BASE_MANAGER_CLASS_FULLNAME = "django.db.models.manager.BaseManager"
 MANAGER_CLASS_FULLNAME = "django.db.models.manager.Manager"
 RELATED_MANAGER_CLASS = "django.db.models.fields.related_descriptors.RelatedManager"
 
-WITH_ANNOTATIONS_FULLNAME = "django_stubs_ext.WithAnnotations"
+WITH_ANNOTATIONS_FULLNAME = "django_stubs_ext.annotations.WithAnnotations"
 ANNOTATIONS_FULLNAME = "django_stubs_ext.annotations.Annotations"
 
 BASEFORM_CLASS_FULLNAME = "django.forms.forms.BaseForm"
@@ -62,7 +63,7 @@ MULTIPLE_OBJECTS_RETURNED = "django.core.exceptions.MultipleObjectsReturned"
 
 DJANGO_ABSTRACT_MODELS = frozenset(
     (
-        "django.contrib.auth.base_user.AbstractBaseUser",
+        ABSTRACT_BASE_USER_MODEL_FULLNAME,
         ABSTRACT_USER_MODEL_FULLNAME,
         PERMISSION_MIXIN_CLASS_FULLNAME,
         "django.contrib.sessions.base_session.AbstractBaseSession",
