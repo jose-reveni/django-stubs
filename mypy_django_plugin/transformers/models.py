@@ -41,7 +41,6 @@ from mypy.types import Type as MypyType
 from mypy.typevars import fill_typevars, fill_typevars_with_any
 
 from mypy_django_plugin.django.context import DjangoContext
-from mypy_django_plugin.errorcodes import MANAGER_MISSING
 from mypy_django_plugin.exceptions import UnregisteredModelError
 from mypy_django_plugin.lib import fullnames, helpers
 from mypy_django_plugin.lib.fullnames import ANNOTATIONS_FULLNAME
@@ -567,14 +566,14 @@ class AddReverseLookups(ModelClassInitializer):
             #
             # See https://github.com/typeddjango/django-stubs/pull/993
             # for more information on when this error can occur.
-            self.ctx.api.fail(
-                (
-                    f"Couldn't resolve related manager {attname!r} for relation "
-                    f"'{to_model_info.fullname}.{relation.field.name}'."
-                ),
-                self.ctx.cls,
-                code=MANAGER_MISSING,
-            )
+            # self.ctx.api.fail(
+            #     (
+            #         f"Couldn't resolve related manager {attname!r} for relation "
+            #         f"'{to_model_info.fullname}.{relation.field.name}'."
+            #     ),
+            #     self.ctx.cls,
+            #     code=MANAGER_MISSING,
+            # )
             return
 
         default_manager_type = get_proper_type(default_manager.type)
