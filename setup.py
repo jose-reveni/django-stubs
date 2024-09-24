@@ -24,7 +24,7 @@ dependencies = [
     "django",
     "django-stubs-ext>=4.2.7",
     "asgiref",
-    "django-stubs-ext>=5.0.4",
+    "django-stubs-ext>=5.1.0",
     "tomli; python_version < '3.11'",
     # Types:
     "typing-extensions>=4.11.0",
@@ -40,7 +40,7 @@ extras_require = {
 
 setup(
     name="django-stubs",
-    version="5.0.4",
+    version="5.1.0",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -72,6 +72,7 @@ setup(
         "Framework :: Django",
         "Framework :: Django :: 4.2",
         "Framework :: Django :: 5.0",
+        "Framework :: Django :: 5.1",
     ],
     project_urls={
         "Funding": "https://github.com/sponsors/typeddjango",
