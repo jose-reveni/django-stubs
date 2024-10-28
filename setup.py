@@ -24,7 +24,7 @@ dependencies = [
     "django",
     "django-stubs-ext>=4.2.7",
     "asgiref",
-    "django-stubs-ext>=5.1.0",
+    "django-stubs-ext>=5.1.1",
     "tomli; python_version < '3.11'",
     # Types:
     "typing-extensions>=4.11.0",
@@ -33,14 +33,14 @@ dependencies = [
 
 # Keep compatible-mypy major.minor version pinned to what we use in CI (requirements.txt)
 extras_require = {
-    "compatible-mypy": ["mypy~=1.11.0"],
+    "compatible-mypy": ["mypy>=1.12,<1.14"],
     "redis": ["redis"],
     "oracle": ["oracledb"],
 }
 
 setup(
     name="django-stubs",
-    version="5.1.0",
+    version="5.1.1",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -63,11 +63,11 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "Typing :: Typed",
         "Framework :: Django",
         "Framework :: Django :: 4.2",
