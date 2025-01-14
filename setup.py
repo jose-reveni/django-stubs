@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 import os
-from typing import List
 
 from setuptools import find_packages, setup
 
 
-def find_stub_files(name: str) -> List[str]:
+def find_stub_files(name: str) -> list[str]:
     result = []
     for root, _dirs, files in os.walk(name):
         for file in files:
@@ -24,7 +23,7 @@ dependencies = [
     "django",
     "django-stubs-ext>=4.2.7",
     "asgiref",
-    "django-stubs-ext>=5.1.1",
+    "django-stubs-ext>=5.1.2",
     "tomli; python_version < '3.11'",
     # Types:
     "typing-extensions>=4.11.0",
@@ -33,14 +32,14 @@ dependencies = [
 
 # Keep compatible-mypy major.minor version pinned to what we use in CI (requirements.txt)
 extras_require = {
-    "compatible-mypy": ["mypy>=1.12,<1.14"],
+    "compatible-mypy": ["mypy>=1.12,<1.15"],
     "redis": ["redis"],
     "oracle": ["oracledb"],
 }
 
 setup(
     name="django-stubs",
-    version="5.1.1",
+    version="5.1.2",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
