@@ -3,7 +3,7 @@ import uuid
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import date, time, timedelta
 from datetime import datetime as real_datetime
-from typing import Any, ClassVar, Generic, Literal, Protocol, TypeVar, overload, type_check_only
+from typing import Any, ClassVar, Generic, Literal, Protocol, TypeAlias, TypeVar, overload, type_check_only
 
 from django import forms
 from django.core import validators  # due to weird mypy.stubtest error
@@ -13,11 +13,12 @@ from django.db.models import Model
 from django.db.models.expressions import Col, Combinable, Expression, Func
 from django.db.models.fields.reverse_related import ForeignObjectRel
 from django.db.models.query_utils import Q, RegisterLookupMixin
+from django.db.models.sql.compiler import SQLCompiler, _AsSqlType, _ParamsT
 from django.forms import Widget
-from django.utils.choices import BlankChoiceIterator, _Choice, _ChoiceNamedGroup, _Choices, _ChoicesCallable
+from django.utils.choices import BlankChoiceIterator, _Choice, _ChoiceNamedGroup, _ChoicesCallable, _ChoicesInput
 from django.utils.datastructures import DictWrapper
 from django.utils.functional import _Getter, _StrOrPromise, cached_property
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self
 
 class Empty: ...
 class NOT_PROVIDED: ...
@@ -169,7 +170,7 @@ class Field(RegisterLookupMixin, Generic[_ST, _GT]):
         unique_for_date: str | None = None,
         unique_for_month: str | None = None,
         unique_for_year: str | None = None,
-        choices: _Choices | None = None,
+        choices: _ChoicesInput | None = None,
         help_text: _StrOrPromise = "",
         db_column: str | None = None,
         db_tablespace: str | None = None,
@@ -189,6 +190,7 @@ class Field(RegisterLookupMixin, Generic[_ST, _GT]):
     # non-Model instances
     @overload
     def __get__(self, instance: Any, owner: Any) -> Self: ...
+    def select_format(self, compiler: SQLCompiler, sql: str, params: _ParamsT) -> _AsSqlType: ...
     def deconstruct(self) -> tuple[str, str, Sequence[Any], dict[str, Any]]: ...
     def set_attributes_from_name(self, name: str) -> None: ...
     def db_type_parameters(self, connection: BaseDatabaseWrapper) -> DictWrapper: ...
@@ -222,7 +224,6 @@ class Field(RegisterLookupMixin, Generic[_ST, _GT]):
         limit_choices_to: _LimitChoicesTo | None = None,
         ordering: Sequence[str] = (),
     ) -> BlankChoiceIterator | _ChoicesList: ...
-    def _get_flatchoices(self) -> list[_Choice]: ...
     @property
     def flatchoices(self) -> list[_Choice]: ...
     def has_default(self) -> bool: ...
@@ -235,7 +236,7 @@ class Field(RegisterLookupMixin, Generic[_ST, _GT]):
     def get_attname(self) -> str: ...
     def get_attname_column(self) -> tuple[str, str]: ...
     def value_to_string(self, obj: Model) -> str: ...
-    def slice_expression(self, expression: Expression, start: int, end: int | None) -> Func: ...
+    def slice_expression(self, expression: Expression, start: int, length: int | None) -> Func: ...
 
 class IntegerField(Field[_ST, _GT]):
     _pyi_private_set_type: float | int | str | Combinable
@@ -283,7 +284,7 @@ class DecimalField(Field[_ST, _GT]):
         editable: bool = ...,
         auto_created: bool = ...,
         serialize: bool = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -315,7 +316,7 @@ class CharField(Field[_ST, _GT]):
         unique_for_date: str | None = ...,
         unique_for_month: str | None = ...,
         unique_for_year: str | None = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -345,7 +346,7 @@ class SlugField(CharField[_ST, _GT]):
         unique_for_date: str | None = ...,
         unique_for_month: str | None = ...,
         unique_for_year: str | None = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -381,7 +382,7 @@ class URLField(CharField[_ST, _GT]):
         unique_for_date: str | None = ...,
         unique_for_month: str | None = ...,
         unique_for_year: str | None = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -414,7 +415,7 @@ class TextField(Field[_ST, _GT]):
         unique_for_date: str | None = ...,
         unique_for_month: str | None = ...,
         unique_for_year: str | None = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -462,7 +463,7 @@ class GenericIPAddressField(Field[_ST, _GT]):
         editable: bool = ...,
         auto_created: bool = ...,
         serialize: bool = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -497,7 +498,7 @@ class DateField(DateTimeCheckMixin, Field[_ST, _GT]):
         editable: bool = ...,
         auto_created: bool = ...,
         serialize: bool = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -528,7 +529,7 @@ class TimeField(DateTimeCheckMixin, Field[_ST, _GT]):
         editable: bool = ...,
         auto_created: bool = ...,
         serialize: bool = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -565,7 +566,7 @@ class UUIDField(Field[_ST, _GT]):
         unique_for_date: str | None = ...,
         unique_for_month: str | None = ...,
         unique_for_year: str | None = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -602,7 +603,7 @@ class FilePathField(Field[_ST, _GT]):
         editable: bool = ...,
         auto_created: bool = ...,
         serialize: bool = ...,
-        choices: _Choices | None = ...,
+        choices: _ChoicesInput | None = ...,
         help_text: _StrOrPromise = ...,
         db_column: str | None = ...,
         db_comment: str | None = ...,
@@ -630,3 +631,38 @@ class AutoField(AutoFieldMixin, IntegerField[_ST, _GT], metaclass=AutoFieldMeta)
 
 class BigAutoField(AutoFieldMixin, BigIntegerField[_ST, _GT]): ...
 class SmallAutoField(AutoFieldMixin, SmallIntegerField[_ST, _GT]): ...
+
+__all__ = [
+    "AutoField",
+    "BLANK_CHOICE_DASH",
+    "BigAutoField",
+    "BigIntegerField",
+    "BinaryField",
+    "BooleanField",
+    "CharField",
+    "CommaSeparatedIntegerField",
+    "DateField",
+    "DateTimeField",
+    "DecimalField",
+    "DurationField",
+    "EmailField",
+    "Empty",
+    "Field",
+    "FilePathField",
+    "FloatField",
+    "GenericIPAddressField",
+    "IPAddressField",
+    "IntegerField",
+    "NOT_PROVIDED",
+    "NullBooleanField",
+    "PositiveBigIntegerField",
+    "PositiveIntegerField",
+    "PositiveSmallIntegerField",
+    "SlugField",
+    "SmallAutoField",
+    "SmallIntegerField",
+    "TextField",
+    "TimeField",
+    "URLField",
+    "UUIDField",
+]

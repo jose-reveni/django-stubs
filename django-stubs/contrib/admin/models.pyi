@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Literal, overload
+from typing import Any, ClassVar
 from uuid import UUID
 
 from django.db import models
@@ -22,7 +22,6 @@ class LogEntryManager(models.Manager[LogEntry]):
         action_flag: int,
         change_message: Any = ...,
     ) -> LogEntry: ...
-    @overload
     def log_actions(
         self,
         user_id: int,
@@ -30,18 +29,8 @@ class LogEntryManager(models.Manager[LogEntry]):
         action_flag: int,
         change_message: str | list[Any] = "",
         *,
-        single_object: Literal[True],
-    ) -> LogEntry: ...
-    @overload
-    def log_actions(
-        self,
-        user_id: int,
-        queryset: QuerySet[Model],
-        action_flag: int,
-        change_message: str | list[Any] = "",
-        *,
-        single_object: Literal[False] = False,
-    ) -> list[LogEntry]: ...
+        single_object: bool = False,
+    ) -> list[LogEntry] | LogEntry: ...
 
 class LogEntry(models.Model):
     action_time: models.DateTimeField

@@ -1,6 +1,6 @@
 import builtins
 from collections.abc import Iterable
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from django import VERSION
 from django.contrib.admin import ModelAdmin
@@ -16,7 +16,7 @@ from django.db.models.fields.related import ForeignKey
 from django.db.models.fields.related_descriptors import ReverseManyToOneDescriptor
 from django.db.models.lookups import Lookup
 from django.db.models.manager import BaseManager
-from django.db.models.query import QuerySet, RawQuerySet
+from django.db.models.query import ModelIterable, QuerySet, RawQuerySet
 from django.forms.formsets import BaseFormSet
 from django.forms.models import BaseModelForm, BaseModelFormSet, ModelChoiceField
 from django.utils.connection import BaseConnectionHandler
@@ -40,7 +40,7 @@ class MPGeneric(Generic[_T]):
     possible issues we may run into with this method.
     """
 
-    def __init__(self, cls: type[_T], version: Optional[_VersionSpec] = None) -> None:
+    def __init__(self, cls: type[_T], version: _VersionSpec | None = None) -> None:
         """Set the data fields, basic constructor."""
         self.version = version
         self.cls = cls
@@ -74,6 +74,7 @@ _need_generic: list[MPGeneric[Any]] = [
     MPGeneric(BaseConnectionHandler),
     MPGeneric(ExpressionWrapper),
     MPGeneric(ReverseManyToOneDescriptor),
+    MPGeneric(ModelIterable),
     # These types do have native `__class_getitem__` method since django 3.1:
     MPGeneric(QuerySet, (3, 1)),
     MPGeneric(BaseManager, (3, 1)),
@@ -83,7 +84,7 @@ _need_generic: list[MPGeneric[Any]] = [
 ]
 
 
-def monkeypatch(extra_classes: Optional[Iterable[type]] = None, include_builtins: bool = True) -> None:
+def monkeypatch(extra_classes: Iterable[type] | None = None, include_builtins: bool = True) -> None:
     """Monkey patch django as necessary to work properly with mypy."""
 
     # Add the __class_getitem__ dunder.

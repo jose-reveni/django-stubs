@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/typeddjango/django-stubs/master/logo.svg" alt="django-stubs">
 
-[![Build status](https://github.com/typeddjango/django-stubs/workflows/test/badge.svg?branch=master&event=push)](https://github.com/typeddjango/django-stubs/actions?query=workflow%3Atest)
+[![test](https://github.com/typeddjango/django-stubs/actions/workflows/test.yml/badge.svg?branch=master&event=push)](https://github.com/typeddjango/django-stubs/actions/workflows/test.yml)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 [![Gitter](https://badges.gitter.im/mypy-django/Lobby.svg)](https://gitter.im/mypy-django/Lobby)
 [![StackOverflow](https://shields.io/badge/ask-stackoverflow-orange?logo=stackoverflow)](https://stackoverflow.com/questions/tagged/django-stubs?tab=Active)
@@ -49,7 +49,9 @@ We rely on different `django` and `mypy` versions:
 
 | django-stubs   | Mypy version | Django version | Django partial support | Python version |
 |----------------|--------------|----------------|------------------------|----------------|
-| 5.1.2          | 1.13+        | 5.1            | 4.2                    | 3.8 - 3.13     |
+| 5.2.0          | 1.13+        | 5.2            | 5.1                    | 3.10 - 3.13    |
+| 5.1.3          | 1.13+        | 5.1            | 4.2                    | 3.9 - 3.13     |
+| 5.1.2          | 1.13+        | 5.1            | 4.2                    | 3.9 - 3.13     |
 | 5.1.1          | 1.13.x       | 5.1            | 4.2                    | 3.8 - 3.12     |
 | 5.1.0          | 1.11.x       | 5.1            | 4.2                    | 3.8 - 3.12     |
 | 5.0.4          | 1.11.x       | 5.0            | 4.2                    | 3.8 - 3.12     |
@@ -166,7 +168,7 @@ This happens because these Django classes do not support [`__class_getitem__`](h
 
 ### How can I create a HttpRequest that's guaranteed to have an authenticated user?
 
-Django's built in [`HttpRequest`](https://docs.djangoproject.com/en/4.1/ref/request-response/#django.http.HttpRequest) has the attribute `user` that resolves to the type
+Django's built in [`HttpRequest`](https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpRequest) has the attribute `user` that resolves to the type
 
 ```python
 Union[User, AnonymousUser]
@@ -258,7 +260,7 @@ func(MyModel.objects.annotate(bar=Value("")).get(id=1))  # Error
 
 The lazy translation functions of Django (such as `gettext_lazy`) return a `Promise` instead of `str`. These two types [cannot be used interchangeably](https://github.com/typeddjango/django-stubs/pull/1139#issuecomment-1232167698). The return type of these functions was therefore [changed](https://github.com/typeddjango/django-stubs/pull/689) to reflect that.
 
-If you encounter this error in your own code, you can either cast the `Promise` to `str` (causing the translation to be evaluated), or use the `StrPromise` or `StrOrPromise` types from `django-stubs-ext` in type hints. Which solution to choose depends depends on the particular case. See [working with lazy translation objects](https://docs.djangoproject.com/en/4.1/topics/i18n/translation/#working-with-lazy-translation-objects) in the Django documentation for more information.
+If you encounter this error in your own code, you can either cast the `Promise` to `str` (causing the translation to be evaluated), or use the `StrPromise` or `StrOrPromise` types from `django-stubs-ext` in type hints. Which solution to choose depends depends on the particular case. See [working with lazy translation objects](https://docs.djangoproject.com/en/5.2/topics/i18n/translation/#working-with-lazy-translation-objects) in the Django documentation for more information.
 
 If this is reported on Django code, please report an issue or open a pull request to fix the type hints.
 
@@ -308,6 +310,90 @@ reveal_type(settings.EXISTS_AT_RUNTIME)  # N: Any
 # Errors:
 reveal_type(settings.MISSING)  # E: 'Settings' object has no attribute 'MISSING'
 ```
+
+### How to use `type[Model]` annotation with `.objects` attribute?
+
+Let's say you have a function similar to this one,
+which accepts a model type and accesses its `.object` attribute:
+
+```python
+from django.db import models
+
+def assert_zero_count(model_type: type[models.Model]) -> None:
+    assert model_type.objects.count() == 0
+```
+
+This code will raise an error from mypy:
+
+```
+error: "type[Model]" has no attribute "objects"  [attr-defined]
+```
+
+It is a common problem: some `type[models.Model]` types won't have `.objects` available.
+Notable example: [abstract models](https://docs.djangoproject.com/en/5.2/topics/db/models/#abstract-base-classes).
+See [the reasoning here](https://github.com/typeddjango/django-stubs/issues/1684).
+
+So, instead for the general case you should write:
+
+```python
+def assert_zero_count(model_type: type[models.Model]) -> None:
+    assert model_type._default_manager.count() == 0
+```
+
+
+### How to type a custom `models.Field`?
+
+> [!NOTE]
+> This require type generic support, see <a href="#i-cannot-use-queryset-or-manager-with-type-annotations">this section</a> to enable it.
+
+
+Django `models.Field` (and subclasses) are generic types with two parameters:
+- `_ST`: type that can be used when setting a value
+- `_GT`: type that will be returned when getting a value
+
+When you create a subclass, you have two options depending on how strict you want
+the type to be for consumers of your custom field.
+
+1. Generic subclass:
+
+```python
+from typing import TypeVar, reveal_type
+from django.db import models
+
+_ST = TypeVar("_ST", contravariant=True)
+_GT = TypeVar("_GT", covariant=True)
+
+class MyIntegerField(models.IntegerField[_ST, _GT]):
+    ...
+
+class User(models.Model):
+    my_field = MyIntegerField()
+
+
+reveal_type(User().my_field) # N: Revealed type is "int"
+User().my_field = "12"  # OK (because Django IntegerField allows str and will try to coerce it)
+```
+
+2. Non-generic subclass (more strict):
+
+```python
+from typing import reveal_type
+from django.db import models
+
+# This is a non-generic subclass being very explicit
+# that it expects only int when setting values.
+class MyStrictIntegerField(models.IntegerField[int, int]):
+    ...
+
+class User(models.Model):
+    my_field = MyStrictIntegerField()
+
+
+reveal_type(User().my_field) # N: Revealed type is "int"
+User().my_field = "12" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+```
+
+See mypy section on [generic classes subclasses](https://mypy.readthedocs.io/en/stable/generics.html#defining-subclasses-of-generic-classes).
 
 ## Related projects
 

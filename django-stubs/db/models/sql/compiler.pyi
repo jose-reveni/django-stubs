@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Literal, overload
+from typing import Any, Literal, TypeAlias, overload
 from uuid import UUID
 
 from django.db.backends.base.base import BaseDatabaseWrapper
@@ -11,7 +11,6 @@ from django.db.models.expressions import BaseExpression, Expression, Ref
 from django.db.models.sql.query import Query
 from django.db.models.sql.subqueries import AggregateQuery, DeleteQuery, InsertQuery, UpdateQuery
 from django.utils.functional import cached_property
-from typing_extensions import TypeAlias
 
 _ParamT: TypeAlias = str | int
 
@@ -88,7 +87,6 @@ class SQLCompiler:
         restricted: bool | None = None,
     ) -> list[dict[str, Any]]: ...
     def get_select_for_update_of_arguments(self) -> list[Any]: ...
-    def deferred_to_columns(self) -> dict[type[Model], set[str]]: ...
     def get_converters(self, expressions: list[Expression]) -> dict[int, tuple[list[Callable], Expression]]: ...
     def apply_converters(
         self, rows: Iterable[Iterable[Any]], converters: dict[int, tuple[list[Callable], Expression]]
@@ -120,7 +118,6 @@ class SQLCompiler:
     def execute_sql(
         self, result_type: Literal["multi"] = "multi", chunked_fetch: bool = False, chunk_size: int = 100
     ) -> Iterable[list[Sequence[Any]]] | None: ...
-    def as_subquery_condition(self, alias: str, columns: list[str], compiler: SQLCompiler) -> _AsSqlType: ...
     def explain_query(self) -> Iterator[str]: ...
 
 class SQLInsertCompiler(SQLCompiler):

@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Sequence
-from typing import Any, Generic, Literal, TypeVar, overload
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, overload
 
 from django.apps.config import AppConfig
 from django.apps.registry import Apps
@@ -14,7 +14,6 @@ from django.db.models.manager import Manager
 from django.db.models.query_utils import PathInfo
 from django.utils.datastructures import ImmutableList, _ListOrTuple
 from django.utils.functional import _StrOrPromise, cached_property
-from typing_extensions import TypeAlias
 
 PROXY_PARENTS: object
 EMPTY_RELATION_TREE: Any
@@ -37,7 +36,7 @@ def make_immutable_fields_list(name: str, data: Iterable[_T]) -> ImmutableList[_
 _M = TypeVar("_M", bound=Model)
 
 class Options(Generic[_M]):
-    constraints: list[BaseConstraint]
+    constraints: _ListOrTuple[BaseConstraint]
     FORWARD_PROPERTIES: set[str]
     REVERSE_PROPERTIES: set[str]
     default_apps: Any
@@ -51,19 +50,20 @@ class Options(Generic[_M]):
     verbose_name: _StrOrPromise | None
     verbose_name_plural: _StrOrPromise | None
     db_table: str
+    db_table_comment: str
     ordering: Sequence[str] | None
-    indexes: list[Any]
+    indexes: _ListOrTuple[Any]
     unique_together: Sequence[tuple[str, ...]]  # Are always normalized
     index_together: Sequence[tuple[str, ...]]  # Are always normalized
     select_on_save: bool
     default_permissions: Sequence[str]
-    permissions: list[Any]
+    permissions: _ListOrTuple[Any]
     object_name: str | None
     app_label: str
     get_latest_by: Sequence[str] | None
     order_with_respect_to: str | None
     db_tablespace: str
-    required_db_features: list[str]
+    required_db_features: _ListOrTuple[str]
     required_db_vendor: Literal["sqlite", "postgresql", "mysql", "oracle"] | None
     meta: type | None
     pk: Field
@@ -97,10 +97,11 @@ class Options(Generic[_M]):
     def setup_pk(self, field: GenericForeignKey | Field[Any, Any]) -> None: ...
     def setup_proxy(self, target: type[Model]) -> None: ...
     def can_migrate(self, connection: BaseDatabaseWrapper | str) -> bool: ...
-    @property
+    @cached_property
     def verbose_name_raw(self) -> str: ...
-    @property
+    @cached_property
     def swapped(self) -> str | None: ...
+    def setting_changed(self, *, setting: str, **kwargs: Any) -> None: ...
     @cached_property
     def fields_map(self) -> dict[str, Field[Any, Any] | ForeignObjectRel]: ...
     @cached_property
@@ -115,6 +116,8 @@ class Options(Generic[_M]):
     def fields(self) -> ImmutableList[Field[Any, Any]]: ...
     def get_field(self, field_name: str) -> Field | ForeignObjectRel | GenericForeignKey: ...
     def get_base_chain(self, model: type[Model]) -> list[type[Model]]: ...
+    @cached_property
+    def all_parents(self) -> tuple[type[Model]]: ...
     def get_parent_list(self) -> list[type[Model]]: ...
     def get_ancestor_link(self, ancestor: type[Model]) -> OneToOneField | None: ...
     def get_path_to_parent(self, parent: type[Model]) -> list[PathInfo]: ...

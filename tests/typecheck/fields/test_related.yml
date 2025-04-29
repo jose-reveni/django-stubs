@@ -227,7 +227,7 @@
         -   path: myapp/__init__.py
         -   path: myapp/models/__init__.py
             content: |
-                from .app import App
+                from .app import App as App
         -   path: myapp/models/app.py
             content: |
                 from django.db import models
@@ -254,7 +254,7 @@
         -   path: myapp/__init__.py
         -   path: myapp/models/__init__.py
             content: |
-                from .user import User
+                from .user import User as User
         -   path: myapp/models/user.py
             content: |
                 from django.db import models
@@ -279,9 +279,9 @@
         -   path: myapp/__init__.py
         -   path: myapp/models/__init__.py
             content: |
-                from .user import User
-                from .profile import Profile
-                from .app import App
+                from .user import User as User
+                from .profile import Profile as Profile
+                from .app import App as App
         -   path: myapp/models/user.py
             content: |
                 from django.db import models
@@ -466,8 +466,8 @@
         -   path: myapp/__init__.py
         -   path: myapp/models/__init__.py
             content: |
-                from .publisher import Publisher
-                from .book import Book
+                from .publisher import Publisher as Publisher
+                from .book import Book as Book
         -   path: myapp/models/publisher.py
             content: |
                 from django.db import models
@@ -489,7 +489,7 @@
         -   path: myapp/__init__.py
         -   path: myapp/models/__init__.py
             content: |
-                from .book import Book
+                from .book import Book as Book
         -   path: myapp/models/publisher.py
             content: |
                 from django.db import models
@@ -727,10 +727,10 @@
         -   path: myapp/models.py
             content: |
                 from django.db import models
-                from django.db.models.manager import BaseManager
+                from django.db.models.manager import Manager
                 class TransactionQuerySet(models.QuerySet):
                     pass
-                TransactionManager = BaseManager.from_queryset(TransactionQuerySet)
+                TransactionManager = Manager.from_queryset(TransactionQuerySet)
                 class Transaction(models.Model):
                     pk = 0
                     objects = TransactionManager()
@@ -752,13 +752,13 @@
         -   path: myapp/models.py
             content: |
                 from django.db import models
-                from django.db.models.manager import BaseManager
+                from django.db.models.manager import Manager
                 class TransactionQuerySet(models.QuerySet):
                     def custom(self) -> None:
                         pass
 
-                def TransactionManager() -> BaseManager:
-                    return BaseManager.from_queryset(TransactionQuerySet)()
+                def TransactionManager() -> Manager:
+                    return Manager.from_queryset(TransactionQuerySet)()
 
                 class Transaction(models.Model):
                     objects = TransactionManager()
@@ -771,10 +771,9 @@
                 class TransactionLog(models.Model):
                     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE)
     out: |
-        myapp/models:11: error: Could not resolve manager type for "myapp.models.Transaction.objects"  [django-manager-missing]
         myapp/models:13: note: Revealed type is "django.db.models.fields.related_descriptors.RelatedManager[myapp.models.TransactionLog]"
-        myapp/models:15: note: Revealed type is "myapp.models.UnknownManager[myapp.models.Transaction]"
-        myapp/models:16: note: Revealed type is "Any"
+        myapp/models:15: note: Revealed type is "myapp.models.ManagerFromTransactionQuerySet[myapp.models.Transaction]"
+        myapp/models:16: note: Revealed type is "None"
 
 
 -   case: resolve_primary_keys_for_foreign_keys_with_abstract_self_model
@@ -836,7 +835,8 @@
         reveal_type(Order().products)  # N: Revealed type is "myapp.models.Product_RelatedManager"
         reveal_type(Order().products.get())  # N: Revealed type is "myapp.models.Product"
         reveal_type(Order().products.queryset_method())  # N: Revealed type is "builtins.int"
-        if 1 == 2:
+        cond: bool
+        if cond:
             manager = User().products
         else:
             manager = Order().products
@@ -913,12 +913,12 @@
         -   path: myapp/models/purchase.py
             content: |
                 from django.db import models
-                from django.db.models.manager import BaseManager
+                from django.db.models.manager import Manager
                 from .querysets import PurchaseQuerySet
                 from .store import Store
                 from .user import User
 
-                PurchaseManager = BaseManager.from_queryset(PurchaseQuerySet)
+                PurchaseManager = Manager.from_queryset(PurchaseQuerySet)
                 class Purchase(models.Model):
                     objects = PurchaseManager()
                     store = models.ForeignKey(to=Store, on_delete=models.CASCADE, related_name='purchases')
@@ -936,7 +936,7 @@
         -   path: myapp/models.py
             content: |
                 from django.db import models
-                from django.db.models.manager import BaseManager
+                from django.db.models.manager import Manager
 
                 class User(models.Model):
                     purchases: int
@@ -945,7 +945,7 @@
                     def queryset_method(self) -> "PurchaseQuerySet":
                         return self.all()
 
-                PurchaseManager = BaseManager.from_queryset(PurchaseQuerySet)
+                PurchaseManager = Manager.from_queryset(PurchaseQuerySet)
                 class Purchase(models.Model):
                     objects = PurchaseManager()
                     user = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='purchases')
@@ -1338,8 +1338,8 @@
         -   path: myapp/__init__.py
         -   path: myapp/models/__init__.py
             content: |
-                from .child import Child
-                from .parent import Parent
+                from .child import Child as Child
+                from .parent import Parent as Parent
         -   path: myapp/models/parent.py
             content: |
                 from django.db import models

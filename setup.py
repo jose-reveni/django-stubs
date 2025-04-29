@@ -23,7 +23,7 @@ dependencies = [
     "django",
     "django-stubs-ext>=4.2.7",
     "asgiref",
-    "django-stubs-ext>=5.1.2",
+    "django-stubs-ext>=5.2.0",
     "tomli; python_version < '3.11'",
     # Types:
     "typing-extensions>=4.11.0",
@@ -32,14 +32,14 @@ dependencies = [
 
 # Keep compatible-mypy major.minor version pinned to what we use in CI (requirements.txt)
 extras_require = {
-    "compatible-mypy": ["mypy>=1.12,<1.15"],
+    "compatible-mypy": ["mypy>=1.13,<1.16"],
     "redis": ["redis"],
     "oracle": ["oracledb"],
 }
 
 setup(
     name="django-stubs",
-    version="5.1.2",
+    version="5.2.0",
     description="Mypy stubs for Django",
     long_description=readme,
     long_description_content_type="text/markdown",
@@ -51,7 +51,7 @@ setup(
     maintainer="Marti Raudsepp",
     maintainer_email="marti@juffo.org",
     py_modules=[],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=dependencies,
     extras_require=extras_require,
     packages=["django-stubs", *find_packages(exclude=["scripts"])],
@@ -62,16 +62,15 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
         "Typing :: Typed",
         "Framework :: Django",
-        "Framework :: Django :: 4.2",
         "Framework :: Django :: 5.0",
         "Framework :: Django :: 5.1",
+        "Framework :: Django :: 5.2",
     ],
     project_urls={
         "Funding": "https://github.com/sponsors/typeddjango",

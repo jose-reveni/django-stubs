@@ -1,14 +1,13 @@
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Sequence
 from re import Pattern
 from types import ModuleType
-from typing import Any, overload
+from typing import Any, TypeAlias, overload
 
 from django.core.checks.messages import CheckMessage
 from django.http import HttpRequest, HttpResponse
 from django.urls import _AnyURL
 from django.utils.datastructures import MultiValueDict
 from django.utils.functional import cached_property
-from typing_extensions import TypeAlias
 
 class ResolverMatch:
     func: Callable
@@ -37,8 +36,6 @@ class ResolverMatch:
         extra_kwargs: dict[str, Any] | None = ...,
     ) -> None: ...
     def __getitem__(self, index: int) -> Any: ...
-    # for tuple unpacking
-    def __iter__(self) -> Iterator[Any]: ...
 
 def get_resolver(urlconf: str | None = ...) -> URLResolver: ...
 def get_ns_resolver(ns_pattern: str, resolver: URLResolver, converters: tuple) -> URLResolver: ...
@@ -64,8 +61,13 @@ class RegexPattern(CheckURLMixin):
     def match(self, path: str) -> tuple[str, tuple, dict[str, str]] | None: ...
     def check(self) -> list[CheckMessage]: ...
 
+whitespace_set: frozenset[str]
+
+class LocaleRegexRouteDescriptor:
+    def __get__(self, instance: RoutePattern | None, cls: type | None = None) -> Pattern[str]: ...
+
 class RoutePattern(CheckURLMixin):
-    regex: LocaleRegexDescriptor
+    regex: LocaleRegexRouteDescriptor
     name: str | None
     converters: dict[str, Any]
     def __init__(self, route: str, name: str | None = ..., is_endpoint: bool = ...) -> None: ...
