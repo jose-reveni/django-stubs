@@ -48,6 +48,11 @@ We rely on different `django` and `mypy` versions:
 
 | django-stubs   | Mypy version | Django version | Django partial support | Python version |
 |----------------|--------------|----------------|------------------------|----------------|
+| 5.2.5          | 1.13 - 1.18  | 5.2            | 5.1, 5.0               | 3.10 - 3.13    |
+| 5.2.4          | 1.13 - 1.18  | 5.2            | 5.1, 5.0               | 3.10 - 3.13    |
+| 5.2.3          | 1.13 - 1.18  | 5.2            | 5.1, 5.0               | 3.10 - 3.13    |
+| 5.2.2          | 1.13 - 1.17  | 5.2            | 5.1, 5.0               | 3.10 - 3.13    |
+| 5.2.1          | 1.13 - 1.16  | 5.2            | 5.1, 5.0               | 3.10 - 3.13    |
 | 5.2.0          | 1.13+        | 5.2            | 5.1, 5.0               | 3.10 - 3.13    |
 | 5.1.3          | 1.13+        | 5.1            | 4.2                    | 3.9 - 3.13     |
 | 5.1.2          | 1.13+        | 5.1            | 4.2                    | 3.9 - 3.13     |
@@ -76,6 +81,10 @@ https://github.com/typeddjango/django-stubs/discussions/2101#discussioncomment-9
 ## Features
 
 ### Type checking of Model Meta attributes
+
+> [!NOTE]
+> If you are using the mypy plugin and have `django_stub_ext` installed, your model `Meta` classes
+> will be automatically type-checked without further changes.
 
 By inheriting from the `TypedModelMeta` class, you can ensure you're using correct types for
 attributes:
@@ -164,8 +173,22 @@ This happens because these Django classes do not support [`__class_getitem__`](h
    You can add extra types to patch with `django_stubs_ext.monkeypatch(extra_classes=[YourDesiredType])`
 
    **If you use generic symbols in `django.contrib.auth.forms`**, you will have to do the monkeypatching
-   again in your first [`AppConfig.ready`](https://docs.djangoproject.com/en/5.2/ref/applications/#django.apps.AppConfig.ready).
+   manually in your first [`AppConfig.ready`](https://docs.djangoproject.com/en/5.2/ref/applications/#django.apps.AppConfig.ready).
    This is currently required because `django.contrib.auth.forms` cannot be imported until django is initialized.
+
+    ```python
+    import django_stubs_ext
+    from django.apps import AppConfig
+
+    class ClientsConfig(AppConfig):
+        name = "clients"
+
+        def ready(self) -> None:
+            from django.contrib.auth.forms import SetPasswordMixin, SetUnusablePasswordMixin
+
+            # For Django version prior to 5.1, use `extra_classes=[SetPasswordForm, AdminPasswordChangeForm]` instead.
+            django_stubs_ext.monkeypatch(extra_classes=[SetPasswordMixin, SetUnusablePasswordMixin])
+    ```
 
 
 2. You can use strings instead: `'QuerySet[MyModel]'` and `'Manager[MyModel]'`, this way it will work as a type for `mypy` and as a regular `str` in runtime.

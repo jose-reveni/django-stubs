@@ -1,7 +1,7 @@
 import enum
 from typing import Any, Literal, TypeVar
 
-from django.db.models import Choices, IntegerChoices, TextChoices
+from django.db.models import Choices, IntegerChoices, Model, TextChoices
 from django.utils.functional import _StrOrPromise
 from django.utils.translation import gettext_lazy as _
 from typing_extensions import assert_type
@@ -121,6 +121,18 @@ class ShoutyTextChoices(TextChoices):
     @property
     def label(self) -> str:
         return super().label.upper()
+
+
+class DeckModel(Model):
+    # Alias with the same name.
+    Suit = Suit
+
+    # Alias with a different name.
+    House = Suit
+
+    class Joker(TextChoices):
+        BLACK = "B"
+        RED = "R"
 
 
 # Assertions for an integer choices type that uses a lazy translatable string for all labels.
@@ -258,21 +270,27 @@ assert_type(Award.values, list[str])
 assert_type(Award.choices, list[tuple[str, str]])  # pyright: ignore[reportAssertTypeFailure]
 
 # Assertions for mixing multiple choices types with consistent base types - only `IntegerChoices`.
-x = (Suit, Vehicle)
-assert_type([member.label for choices in x for member in choices], list[_StrOrPromise])
-assert_type([member.value for choices in x for member in choices], list[int])
+x0 = (Suit, Vehicle)
+assert_type([member.label for choices in x0 for member in choices], list[_StrOrPromise])
+assert_type([member.value for choices in x0 for member in choices], list[int])
 
 # Assertions for mixing multiple choices types with consistent base types - only `TextChoices`.
-x = (Medal, Gender)
-assert_type([member.label for choices in x for member in choices], list[_StrOrPromise])
-assert_type([member.value for choices in x for member in choices], list[str])
+x1 = (Medal, Gender)
+assert_type([member.label for choices in x1 for member in choices], list[_StrOrPromise])
+assert_type([member.value for choices in x1 for member in choices], list[str])
 
 # Assertions for mixing multiple choices types with different base types - `IntegerChoices` and `TextChoices`.
-x = (Medal, Suit)
-assert_type([member.label for choices in x for member in choices], list[_StrOrPromise])
-assert_type([member.value for choices in x for member in choices], list[int | str])
+x2 = (Medal, Suit)
+assert_type([member.label for choices in x2 for member in choices], list[_StrOrPromise])
+assert_type([member.value for choices in x2 for member in choices], list[int | str])
 
 # Assertions for mixing multiple choices types with consistent base types - custom types.
-x = (Constants, Separator)
-assert_type([member.label for choices in x for member in choices], list[_StrOrPromise])
-assert_type([member.value for choices in x for member in choices], list[Any])
+x3 = (Constants, Separator)
+assert_type([member.label for choices in x3 for member in choices], list[_StrOrPromise])
+assert_type([member.value for choices in x3 for member in choices], list[Any])
+
+
+# Assertions for choices objects defined and aliased in a model.
+assert_type(DeckModel.Suit.choices, list[tuple[int, _StrOrPromise]])
+assert_type(DeckModel.House.choices, list[tuple[int, _StrOrPromise]])
+assert_type(DeckModel.Joker.choices, list[tuple[str, str]])  # pyright: ignore[reportAssertTypeFailure]

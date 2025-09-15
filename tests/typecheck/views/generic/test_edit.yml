@@ -38,6 +38,7 @@
 
 -   case: generic_form_views
     main: |
+        from typing_extensions import reveal_type
         from django.views.generic.edit import CreateView, UpdateView
         from django import forms
         from myapp.models import Article
@@ -48,11 +49,11 @@
 
         class MyCreateView(CreateView[Article, ArticleModelForm]):
             def some(self) -> None:
-                reveal_type(self.get_form_class())  # N: Revealed type is "Type[main.ArticleModelForm]"
+                reveal_type(self.get_form_class())  # N: Revealed type is "type[main.ArticleModelForm]"
 
         class MyUpdateView(UpdateView[Article, ArticleModelForm]):
             def some(self) -> None:
-                reveal_type(self.get_form_class()) # N: Revealed type is "Type[main.ArticleModelForm]"
+                reveal_type(self.get_form_class()) # N: Revealed type is "type[main.ArticleModelForm]"
     installed_apps:
         - myapp
     files:
@@ -66,6 +67,7 @@
 
 -   case: generic_form_views_different_form_classes
     main: |
+        from typing_extensions import reveal_type
         from django.views.generic.edit import CreateView
         from django import forms
         from myapp.models import Article
@@ -82,8 +84,8 @@
         class MyCreateView(CreateView[Article, ArticleModelForm]):
             def some(self) -> None:
                 reveal_type(self.get_form())  # N: Revealed type is "main.ArticleModelForm"
-                reveal_type(self.get_form(SubArticleModelForm))  # N: Revealed type is "main.SubArticleModelForm"
-                reveal_type(self.get_form(AnotherArticleModelForm))  # N: Revealed type is "main.AnotherArticleModelForm"  # E: Argument 1 to "get_form" of "FormMixin" has incompatible type "Type[AnotherArticleModelForm]"; expected "Optional[Type[ArticleModelForm]]"  [arg-type]
+                reveal_type(self.get_form(SubArticleModelForm))  # N: Revealed type is "main.ArticleModelForm"
+                reveal_type(self.get_form(AnotherArticleModelForm))  # N: Revealed type is "main.ArticleModelForm"  # E: Argument 1 to "get_form" of "FormMixin" has incompatible type "type[AnotherArticleModelForm]"; expected "type[ArticleModelForm] | None"  [arg-type]
     installed_apps:
         - myapp
     files:

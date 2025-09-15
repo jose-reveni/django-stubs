@@ -1,5 +1,6 @@
 -   case: register_filter_unnamed
     main: |
+        from typing_extensions import reveal_type
         from django import template
         register = template.Library()
 
@@ -11,6 +12,7 @@
 
 -   case: register_filter_named
     main: |
+        from typing_extensions import reveal_type
         from django import template
         register = template.Library()
 
@@ -22,6 +24,7 @@
 
 -   case: register_simple_tag_no_args
     main: |
+        from typing_extensions import reveal_type
         import datetime
         from django import template
         register = template.Library()
@@ -34,12 +37,13 @@
 
 -   case: register_simple_tag_context
     main: |
+        from typing_extensions import reveal_type
         from django import template
-        from typing import Dict, Any
+        from typing import Any
         register = template.Library()
 
         @register.simple_tag(takes_context=True)
-        def current_time(context: Dict[str, Any], format_string: str) -> str:
+        def current_time(context: dict[str, Any], format_string: str) -> str:
             timezone = context['timezone']
             return "test"
 
@@ -47,8 +51,8 @@
 
 -   case: register_simple_tag_named
     main: |
+        from typing_extensions import reveal_type
         from django import template
-        from typing import Dict, Any
         register = template.Library()
 
         @register.simple_tag(name='minustwo')
@@ -59,6 +63,7 @@
 
 -   case: register_simple_tag_via_call
     main: |
+        from typing_extensions import reveal_type
         from django import template
         register = template.Library()
 
@@ -69,6 +74,7 @@
 
 -   case: register_simple_block_tag
     main: |
+        from typing_extensions import reveal_type
         import datetime
         from django import template
         register = template.Library()
@@ -92,6 +98,7 @@
 
 -   case: register_tag_no_args
     main: |
+        from typing_extensions import reveal_type
         from django import template
         from django.template.base import Parser, Token
         from django.template.defaulttags import CycleNode
@@ -105,6 +112,7 @@
 
 -   case: register_tag_named
     main: |
+        from typing_extensions import reveal_type
         from django import template
         from django.template.base import Parser, Token
         from django.template.defaulttags import CycleNode
@@ -118,12 +126,12 @@
 
 -   case: register_inclusion_tag
     main: |
+        from typing_extensions import reveal_type
         from django import template
-        from typing import List
         register = template.Library()
 
         @register.inclusion_tag('results.html')
-        def format_results(results: List[str]) -> str:
+        def format_results(results: list[str]) -> str:
             return ', '.join(results)
 
         reveal_type(format_results) # N: Revealed type is "def (results: builtins.list[builtins.str]) -> builtins.str"
