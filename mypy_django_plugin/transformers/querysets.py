@@ -395,7 +395,7 @@ def _specialize_string_arg_to_literal(
 def specialize_prefetch_type(ctx: FunctionContext, django_context: DjangoContext) -> MypyType:
     """Function hook for `Prefetch(...)` to specialize its `lookup` and `to_attr` generic parameters."""
     default = get_proper_type(ctx.default_return_type)
-    if not isinstance(default, Instance):
+    if not isinstance(default, Instance) and not default.args:
         return ctx.default_return_type
 
     lookup_type = _specialize_string_arg_to_literal(ctx, django_context, "lookup", default.args[0])
